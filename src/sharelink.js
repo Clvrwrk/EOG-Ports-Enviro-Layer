@@ -1,4 +1,5 @@
 import * as Cesium from 'cesium';
+import { portRouteHash } from './share/portRoute.js';
 import { BLOOM_INTENSITY_DEFAULT, BLOOM_SCALE_VERSION } from './bloom.js';
 import {
   migrateDetectionState,
@@ -154,8 +155,14 @@ export class ShareLinkManager {
       parseSharePath(window.location.pathname)?.code ??
       null;
     this._initialShareCode = null;
+    // A port page (/ports/<state>/<name>) with no hash of its own opens on
+    // that port, as if it were a share of the port's view.
+    const portHash =
+      code === null && !hash ? portRouteHash(window.location.pathname) : null;
     const state =
-      code === null ? this._parseShareHash(hash) : this._parseShareCode(code);
+      code === null
+        ? this._parseShareHash(portHash ?? hash)
+        : this._parseShareCode(code);
     if (!state) return null;
     this._beginIncomingRestore(state);
     return state;

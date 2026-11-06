@@ -60,9 +60,46 @@ Source: U.S. EPA, _Port Emissions Inventory Guidance_, EPA-420-B-22-011
   IMO number, with the source of each value.
 - **SO2 low-load factors** for sulfur other than 0.1% need Appendix F, which
   is not transcribed yet; the result is flagged.
-- **Hueneme geofences** are drawn by hand and marked `approximate`. They must
-  be checked against the NOAA chart or OpenStreetMap before results are
-  published.
+- **Hueneme berths** include the Naval Base Ventura County wharves on the
+  basin's west side, which the port's inventory excludes. They must be split
+  by wharf before the validation run. There is no anchorage polygon yet.
+
+## Geofences
+
+Hueneme's harbor polygon is traced from the OpenStreetMap coastline (ways
+763471833 and 934892361, ODbL), from the west jetty tip around the basin to
+the east jetty tip, closed across the entrance and simplified to 6 m. The berth
+zone is the basin north of the entrance channel (latitude 34.1466 and up). The
+entrance point is the midpoint of the two jetty tips. These replace the first
+hand-drawn shapes, which were about twice the real harbor area and put the
+entrance 400 m too far east.
+
+## Live map layer
+
+`src/layers/portEmissions/` adds a **Port Emissions** layer (layer panel,
+Ports group). It outlines the harbor, berths and the 25 nm inventory area,
+and every 30 seconds reads the Live Vessels layer's records into
+`src/emissions/portActivity.js`, which:
+
+- credits the time between two fixes to the mode of the earlier fix (Table
+  3.11), without filling gaps over 6 hours;
+- for ships at berth, takes Appendix E hotel loads and Tables 3.5 to 3.9
+  factors on 0.1% sulfur distillate (ECA and CARB at-berth rule).
+
+AIS gives only a two-digit ship type, so a "cargo" code could be a car
+carrier, a reefer or a container ship, and the engine tier is unknown. Unless
+the vessel table (`src/emissions/vesselRegistry.js`, keyed by IMO or MMSI,
+every row with a source) has the ship, the layer shows a **range** over the
+candidates. For Hueneme those candidates are narrowed to the port's own trades.
+The at-berth auxiliary load is also the shore-power grid demand if every ship
+plugged in. Propulsion is left out, with a warning, until the table supplies
+installed power. The Live Vessels layer loads ships in view, so the layer
+counts ships while the port is on screen.
+
+`/ports/<state>/<name>` (for example `/ports/california/port-of-hueneme`)
+opens the app over that port with Port Emissions and Live Vessels on
+(`src/share/portRoute.js`). It is a long-form share under the hood, so
+reloads and later URL updates behave like any shared view.
 
 ## Validation
 

@@ -97,9 +97,14 @@ function withPublishedBase(
   }
 }
 
+// Fork allocations after wildlife-sightings (the last upstream digit). The
+// allocation fixtures below replay upstream's history, so they drop these.
+const FORK_ALLOCATED_IDS = Object.freeze(['port-emissions']);
 const preWildlifeRows = reservationRows.filter(
-  ([id]) => id !== 'wildlife-sightings',
+  ([id]) => id !== 'wildlife-sightings' && !FORK_ALLOCATED_IDS.includes(id),
 );
+// The next free token on the real ledger, for fixtures that append one.
+const NEXT_FREE = nextLayerStateToken(LAYER_STATE_TOKEN_RESERVATIONS);
 
 function writeCodecFixture(cwd, rows, entries) {
   const providerCodec = path.join(cwd, 'src/data/idSwitches.js');
@@ -109,11 +114,13 @@ function writeCodecFixture(cwd, rows, entries) {
     readFileSync(new URL('./idSwitches.js', import.meta.url)),
   );
   let source = readFileSync(CODEC_SOURCE_PATH, 'utf8');
-  if (!rows.some(([id]) => id === 'wildlife-sightings'))
+  for (const id of ['wildlife-sightings', ...FORK_ALLOCATED_IDS]) {
+    if (rows.some(([rowId]) => rowId === id)) continue;
     source = source.replace(
-      /  Object\.freeze\(\{\s*id: 'wildlife-sightings',[\s\S]*?\}\),\n/,
+      new RegExp(`  Object\\.freeze\\(\\{\\s*id: '${id}',[\\s\\S]*?\\}\\),\\n`),
       '',
     );
+  }
   const registryEnd = ']);\n\nexport const REGISTERED_LAYER_IDS';
   assert.equal(source.split(registryEnd).length, 2);
   const additions = entries
@@ -137,7 +144,7 @@ test('reservation ledger is complete, pinned, and rejects duplicate or malformed
     { ...parseLayerStateTokenReservations(reservationRows) },
     { ...LAYER_STATE_TOKEN_RESERVATIONS },
   );
-  assert.equal(Object.keys(LAYER_STATE_TOKEN_RESERVATIONS).length, 36);
+  assert.equal(Object.keys(LAYER_STATE_TOKEN_RESERVATIONS).length, 37);
   assert.deepEqual(
     { ...LAYER_STATE_TOKEN_RESERVATIONS },
     {
@@ -150,6 +157,7 @@ test('reservation ledger is complete, pinned, and rejects duplicate or malformed
       'ski-pistes': '7',
       'drone-airspace': '8',
       'wildlife-sightings': '9',
+      'port-emissions': '00',
     },
   );
   assert.throws(
@@ -175,9 +183,11 @@ test('reservation ledger is complete, pinned, and rejects duplicate or malformed
     /Duplicate layer-state token reservation/,
   );
   assert.equal(
-    parseLayerStateTokenReservations([...reservationRows, ['future', '00']])
-      .future,
-    '00',
+    parseLayerStateTokenReservations([
+      ...reservationRows,
+      ['future', NEXT_FREE],
+    ]).future,
+    NEXT_FREE,
   );
   assert.throws(
     () =>
@@ -399,19 +409,18 @@ test('an isolated valid two-character fixture round-trips an l field beyond the 
 test('checker reads a complete future base ledger and rejects retired-token reuse', () => {
   withPublishedBase(
     {
-      rows: [...reservationRows, ['retired-layer', '00']],
-      source:
-        'export const LAYER_STATE_TOKEN_RESERVATIONS = Object.freeze({ ["retired-layer"]: "00" });\n',
+      rows: [...reservationRows, ['retired-layer', NEXT_FREE]],
+      source: `export const LAYER_STATE_TOKEN_RESERVATIONS = Object.freeze({ ["retired-layer"]: "${NEXT_FREE}" });\n`,
     },
     (cwd) => {
       const published = readPublishedLayerStateReservations('HEAD', cwd);
-      assert.equal(Object.keys(published).length, 37);
-      assert.equal(published['retired-layer'], '00');
+      assert.equal(Object.keys(published).length, 38);
+      assert.equal(published['retired-layer'], NEXT_FREE);
       assert.throws(
         () =>
           validateLayerStateAllocations(published, {
             ...LAYER_STATE_TOKEN_RESERVATIONS,
-            newcomer: '00',
+            newcomer: NEXT_FREE,
           }),
         /changed or removed/,
       );

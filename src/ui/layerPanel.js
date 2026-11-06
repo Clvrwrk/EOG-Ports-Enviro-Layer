@@ -53,6 +53,10 @@ const PANEL_GROUPS = [
     ],
   },
   {
+    label: msg('Ports'),
+    ids: ['port-emissions'],
+  },
+  {
     label: msg('Cameras'),
     ids: ['cctv', 'recent-imagery', 'street-level'],
   },

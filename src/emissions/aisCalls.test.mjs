@@ -58,11 +58,11 @@ test('MarineCadastre rows parse into records and reject unusable rows', () => {
 const arrival = [
   rec(0, -119.2095, 33.95, 14), // ~11.6 nm out: approach
   rec(60, -119.2095, 34.1, 8), // approach
-  rec(90, -119.209, 34.144, 4), // harbor entrance
-  rec(100, -119.207, 34.152, 0.3), // berth
-  rec(400, -119.207, 34.152, 0.2), // berth
-  rec(700, -119.207, 34.152, 0.2), // berth, 10 h after arrival
-  rec(720, -119.209, 34.144, 5), // leaving
+  rec(90, -119.2135, 34.1445, 4), // entrance channel
+  rec(100, -119.209, 34.151, 0.3), // berth
+  rec(400, -119.209, 34.151, 0.2), // berth
+  rec(700, -119.209, 34.151, 0.2), // berth, 10 h after arrival
+  rec(720, -119.2135, 34.1445, 5), // leaving
   rec(780, -119.2095, 33.4, 14), // outside the domain
 ];
 
@@ -81,8 +81,8 @@ test('a run that reaches a berth is a port call; one that does not is passage', 
 
 test('long gaps split calls and are not filled', () => {
   const gappy = [
-    rec(0, -119.207, 34.152, 0.2),
-    rec(60 * 10, -119.207, 34.152, 0.2),
+    rec(0, -119.209, 34.151, 0.2),
+    rec(60 * 10, -119.209, 34.151, 0.2),
   ];
   assert.equal(splitCalls(gappy, PORT_OF_HUENEME).length, 2);
 });
