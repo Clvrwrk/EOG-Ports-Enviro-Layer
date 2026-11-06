@@ -6,7 +6,8 @@
  * working; new ones join highest state of charge first), then
  * diesel units cover the rest; anything still uncovered is reported as unmet
  * unit-hours. Idle electric units charge on the available chargers when the
- * charging strategy allows it.
+ * charging strategy allows it. A grid-tethered spec (a plug-in harbor crane)
+ * has no battery: its electric units draw from the meter while they work.
  */
 import { STEPS_PER_HOUR } from './touCalendar.js';
 
@@ -59,6 +60,8 @@ export function simulateFleet({
 }) {
   const rule = CHARGING_STRATEGIES[strategy];
   if (!rule) throw new Error(`Unknown charging strategy: ${strategy}`);
+  if (spec.gridTethered)
+    return simulateTethered({ demand, spec, electric, diesel });
   const steps = demand.length;
   const workKwh = spec.kwhPerHour * DT;
   const capacity = spec.batteryKwh;
@@ -121,6 +124,30 @@ export function simulateFleet({
     let total = 0;
     for (let i = 0; i < electric; i += 1) total += soc[i];
     out.meanSoc[step] = electric ? total / (electric * capacity) : 0;
+  }
+  return out;
+}
+
+/** Grid-tethered units: electric units work first and draw power directly. */
+function simulateTethered({ demand, spec, electric, diesel }) {
+  const steps = demand.length;
+  const out = {
+    gridKw: new Float64Array(steps),
+    dieselGallons: new Float64Array(steps),
+    electricWorking: new Uint16Array(steps),
+    dieselWorking: new Uint16Array(steps),
+    unmet: new Uint16Array(steps),
+    meanSoc: new Float64Array(steps),
+  };
+  for (let step = 0; step < steps; step += 1) {
+    const need = demand[step];
+    const electricWorking = Math.min(need, electric);
+    const dieselWorking = Math.min(need - electricWorking, diesel);
+    out.electricWorking[step] = electricWorking;
+    out.dieselWorking[step] = dieselWorking;
+    out.unmet[step] = need - electricWorking - dieselWorking;
+    out.gridKw[step] = electricWorking * spec.kwhPerHour;
+    out.dieselGallons[step] = dieselWorking * spec.dieselGph * DT;
   }
   return out;
 }
