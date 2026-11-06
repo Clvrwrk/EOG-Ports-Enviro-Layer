@@ -15,9 +15,29 @@ import {
 
 const PORT_PAGE_LAYERS = Object.freeze(['port-emissions', 'ais-live-vessels']);
 
-/** The share hash (without `#`) for a port page path, or null. */
-export function portRouteHash(pathname, profiles) {
-  const profile = portForPath(pathname, profiles);
+/**
+ * The port page a bare `/` opens on this deployment, from
+ * `VITE_HOME_PORT_PATH` (for example `/ports/california/port-of-hueneme`).
+ * Unset, `/` stays the ordinary globe.
+ */
+export function homePortPath(env = import.meta.env) {
+  const path = env?.VITE_HOME_PORT_PATH;
+  return typeof path === 'string' && path.trim() ? path.trim() : null;
+}
+
+/** How long the fly-in from the opening globe to a port takes. */
+export const PORT_FLY_IN_SECONDS = 7;
+
+/**
+ * The share hash (without `#`) for a port page path, or null. A bare `/`
+ * resolves to `homePath` when one is given.
+ */
+export function portRouteHash(pathname, profiles, { homePath = null } = {}) {
+  const path =
+    homePath && String(pathname ?? '').replace(/\/+$/, '') === ''
+      ? homePath
+      : pathname;
+  const profile = portForPath(path, profiles);
   if (!profile) return null;
   const tokens = PORT_PAGE_LAYERS.map(
     (id) => LAYER_STATE_REGISTRY.find((entry) => entry.id === id)?.token,
