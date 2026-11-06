@@ -27,7 +27,7 @@ test('the Hueneme seed registry validates and matches the 2023 workbook fleet', 
   const summary = inventorySummary(HUENEME_REGISTRY);
   assert.deepEqual(summary.utr, { diesel: 25, electric: 2 });
   assert.equal(summary.berth.none, 9);
-  assert.deepEqual(summary.mobile_harbor_crane, { diesel: 2, hybrid: 1 });
+  assert.deepEqual(summary.mobile_harbor_crane, { diesel: 1, hybrid: 3 });
 });
 
 test('registry validation reports bad classes, references and duplicates', () => {
@@ -94,6 +94,23 @@ test('diesel covers what the batteries cannot, and gallons follow 2.5 GPH', () =
   assert.equal(result.electricWorking[57], 0);
   assert.equal(result.electricWorking[61], 0);
   assert.equal(result.electricWorking[62], 1);
+});
+
+test('plug-in harbor cranes draw 322.5 kW from the grid while working, diesel covers the rest', () => {
+  const demand = new Uint16Array(STEPS).fill(3);
+  const result = simulateFleet({
+    demand,
+    spec: SPECS.harbor_crane,
+    electric: 2,
+    diesel: 2,
+    periods: new Array(STEPS).fill('off'),
+  });
+  assert.equal(SPECS.harbor_crane.kwhPerHour, 322.5);
+  assert.equal(result.gridKw[0], 2 * 322.5);
+  assert.equal(result.electricWorking[50], 2);
+  assert.equal(result.dieselWorking[50], 1);
+  const gallons = result.dieselGallons.reduce((a, b) => a + b, 0);
+  assert.ok(Math.abs(gallons - 24 * 10.57) < 1e-9);
 });
 
 test('avoid-peak charging defers charging out of 4-9 p.m. above the reserve', () => {

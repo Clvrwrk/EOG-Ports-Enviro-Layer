@@ -162,8 +162,11 @@ shaving (`battery.js`). Vessel calls are synthesized from 2021-23 workbook
 aggregates (`schedule.js`); recorded calls can replace them through
 `runScenario(scenario, { calls })`. The asset registry schema
 (`assetClasses.js`) and Hueneme seed (`hueneme.js`) carry workbook-derived
-planning values that port staff are expected to replace. Tariff numbers are
-planning seeds and say so on the page. The page is English-only and is exempt
+planning values that port staff are expected to replace. The four Liebherr
+mobile harbor cranes are grid-tethered: plug-in units draw 322.5 kW while
+working (LHM 420 Litronic 750 kW x 0.43 load factor) with no battery, through
+the `gridTethered` path in `fleetSim.js`. Tariff numbers are planning seeds and
+say so on the page. The page is English-only and is exempt
 from the i18n scan.
 
 ## Wildlife Sightings — iNaturalist and Acartia

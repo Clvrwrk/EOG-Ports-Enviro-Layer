@@ -22,14 +22,23 @@ export const SPECS = Object.freeze({
     source: WORKBOOK,
   },
   harbor_crane: {
-    label: 'Harbor crane',
+    label: 'Mobile harbor crane (Liebherr LHM 420 Litronic)',
+    model: 'Liebherr LHM 420 Litronic',
+    // Liebherr rates the LHM 420 power unit at 750 kW and up to 38 boxes an
+    // hour. Working draw = rated power x the 0.43 crane load factor used in
+    // EPA NONROAD and port emissions inventories: 750 x 0.43 = 322.5 kWh/hr.
+    ratedKw: 750,
+    loadFactor: 0.43,
+    kwhPerHour: 750 * 0.43,
+    boxesPerHour: 38,
     dieselGph: 10.57,
-    // V20 lists 156 kWh/hr; V23 lists 720, which equals the battery size and
-    // looks like a typo. 156 is used until port staff confirm.
-    kwhPerHour: 156,
-    batteryKwh: 720,
-    chargeKw: 50,
-    source: `${WORKBOOK} (kWh/hr from V20MF)`,
+    // Liebherr hybrids drive on diesel and plug into the grid to work, so
+    // the electric units draw from the meter while working, with no battery.
+    gridTethered: true,
+    batteryKwh: 0,
+    chargeKw: 0,
+    source:
+      'Liebherr LHM 420 product page and 2017 LHM deck (750 kW, 38 boxes/hr); load factor 0.43 per USACE/EPA NONROAD; diesel gal/hr from the workbook',
   },
   reach_stacker: {
     label: 'Reach stacker',
@@ -198,8 +207,8 @@ export const CREW_TEMPLATES = Object.freeze({
  * Vessel-call profile: calls per year and mean hours at berth by vessel
  * type (workbook 2021-2023 schedule, 713 calls), plus the crew template the
  * workbook assigns to working slots and the berths each type uses.
- * maxConcurrent caps reefer calls worked at once: a 2-gang crew uses two of
- * the port's three mobile harbor cranes.
+ * maxConcurrent caps reefer calls worked at once (one reefer crew at a time,
+ * as in the workbook); a 2-gang crew uses two of the four harbor cranes.
  */
 export const CALL_PROFILE = Object.freeze([
   {
@@ -251,61 +260,61 @@ export const FLEET_PLAN = Object.freeze({
   2023: {
     utr: [25, 2],
     forklift_class_v: [3, 0],
-    harbor_crane: [2, 1],
+    harbor_crane: [1, 3],
     reach_stacker: [3, 0],
   },
   2024: {
     utr: [25, 2],
     forklift_class_v: [3, 0],
-    harbor_crane: [1, 2],
+    harbor_crane: [0, 4],
     reach_stacker: [3, 0],
   },
   2025: {
     utr: [25, 2],
     forklift_class_v: [3, 0],
-    harbor_crane: [0, 3],
+    harbor_crane: [0, 4],
     reach_stacker: [3, 0],
   },
   2026: {
     utr: [20, 7],
     forklift_class_v: [3, 0],
-    harbor_crane: [0, 3],
+    harbor_crane: [0, 4],
     reach_stacker: [3, 0],
   },
   2027: {
     utr: [15, 12],
     forklift_class_v: [3, 0],
-    harbor_crane: [0, 3],
+    harbor_crane: [0, 4],
     reach_stacker: [3, 0],
   },
   2028: {
     utr: [10, 17],
     forklift_class_v: [3, 0],
-    harbor_crane: [0, 3],
+    harbor_crane: [0, 4],
     reach_stacker: [3, 0],
   },
   2029: {
     utr: [5, 22],
     forklift_class_v: [3, 0],
-    harbor_crane: [0, 3],
+    harbor_crane: [0, 4],
     reach_stacker: [3, 0],
   },
   2030: {
     utr: [0, 27],
     forklift_class_v: [2, 1],
-    harbor_crane: [0, 3],
+    harbor_crane: [0, 4],
     reach_stacker: [2, 1],
   },
   2031: {
     utr: [0, 27],
     forklift_class_v: [1, 2],
-    harbor_crane: [0, 3],
+    harbor_crane: [0, 4],
     reach_stacker: [1, 2],
   },
   2032: {
     utr: [0, 27],
     forklift_class_v: [0, 3],
-    harbor_crane: [0, 3],
+    harbor_crane: [0, 4],
     reach_stacker: [0, 3],
   },
 });
@@ -405,7 +414,10 @@ export const HUENEME_REGISTRY = Object.freeze({
     })),
     ...fleetAssets('utr', 25, 2),
     ...fleetAssets('forklift_class_v', 3, 0),
-    ...fleetAssets('harbor_crane', 2, 1, 'hybrid'),
+    // Four Liebherr mobile harbor cranes (Ports America). Press releases name
+    // the 2013 LHM 420 and plug-in hybrids delivered in 2019 and 2022; port
+    // staff confirmed the fourth is also a hybrid.
+    ...fleetAssets('harbor_crane', 1, 3, 'hybrid'),
     ...fleetAssets('reach_stacker', 3, 0),
   ],
 });

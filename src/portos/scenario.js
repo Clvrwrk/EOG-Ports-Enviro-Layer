@@ -61,10 +61,6 @@ function planFleet(year, specId) {
   const pick = years.filter((y) => y <= year).pop() ?? years[0];
   const row = FLEET_PLAN[pick][specId];
   if (!row) return null;
-  // Hybrid harbor cranes keep their diesel gensets; until a hybrid duty
-  // cycle is defined they are simulated as diesel units.
-  if (specId === 'harbor_crane')
-    return { diesel: row[0] + row[1], electric: 0 };
   return { diesel: row[0], electric: row[1] };
 }
 
