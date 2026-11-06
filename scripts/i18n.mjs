@@ -479,7 +479,9 @@ function readMarkup(file) {
 
 // Text that never reaches the page as UI: tool results and descriptions for
 // AI clients (MCP and the voice model).
-const NOT_UI = [/^src\/tools\//];
+// src/portos/ is the English-only Port Environmental OS staff workspace
+// (standalone /scenarios page); it joins the catalogs when it gets locales.
+const NOT_UI = [/^src\/tools\//, /^src\/portos\//];
 
 function sourceFiles() {
   return trackedFiles(
