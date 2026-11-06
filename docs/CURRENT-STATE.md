@@ -151,6 +151,21 @@ across the antimeridian, so they cannot use the strict ±180 check as-is, and
 `src/sources/adsbRecords.js` and `server/providers/common/geo.js` keep their own
 implementations.
 
+## Port scenarios — Port Environmental OS phase 1 — November 6, 2026
+
+`/scenarios` (`scenarios.html`, `src/portos/page/`) is a standalone page outside
+the globe. It simulates the Port of Hueneme UTR fleet as battery-electric or
+diesel in 15-minute steps over a year (`src/portos/fleetSim.js`), bills the
+meter on SCE TOU-8 Option D or TOU-EV-9 with facilities- and time-related demand
+(`billing.js`, tariff data in `tariffs.js`), and tests a mobile battery for peak
+shaving (`battery.js`). Vessel calls are synthesized from 2021-23 workbook
+aggregates (`schedule.js`); recorded calls can replace them through
+`runScenario(scenario, { calls })`. The asset registry schema
+(`assetClasses.js`) and Hueneme seed (`hueneme.js`) carry workbook-derived
+planning values that port staff are expected to replace. Tariff numbers are
+planning seeds and say so on the page. The page is English-only and is exempt
+from the i18n scan.
+
 ## Wildlife Sightings — iNaturalist and Acartia
 
 **Wildlife Sightings** (`wildlife-sightings`, share-link token `9`) is off by
