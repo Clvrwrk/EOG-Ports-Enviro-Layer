@@ -52,12 +52,14 @@ export const POLLUTANTS = Object.freeze([
 export const GWP_SETS = Object.freeze({
   AR4: Object.freeze({
     id: 'AR4',
+    // i18n-ignore: source citation, kept as published
     label: 'IPCC AR4 (100-year)',
     ch4: 25,
     n2o: 298,
   }),
   AR5: Object.freeze({
     id: 'AR5',
+    // i18n-ignore: source citation, kept as published
     label: 'IPCC AR5 (100-year)',
     ch4: 28,
     n2o: 265,

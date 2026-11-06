@@ -13,6 +13,7 @@
 export const OGV_FACTOR_SOURCE = Object.freeze({
   id: 'epa-420-b-22-011',
   title:
+    // i18n-ignore: source citation, kept as published
     'EPA Port Emissions Inventory Guidance: Methodologies for Estimating Port-Related and Goods Movement Mobile Source Emissions',
   publisher: 'U.S. Environmental Protection Agency',
   edition: 'April 2022 (EPA-420-B-22-011)',

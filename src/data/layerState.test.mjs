@@ -203,8 +203,8 @@ function encode(state) {
 
 test('production registry is exact, canonical, and rejects incomplete contracts', async () => {
   assert.equal(validateLayerStateRegistry(), true);
-  assert.equal(REGISTERED_LAYER_IDS.length, 36);
-  assert.equal(new Set(REGISTERED_LAYER_IDS).size, 36);
+  assert.equal(REGISTERED_LAYER_IDS.length, 37);
+  assert.equal(new Set(REGISTERED_LAYER_IDS).size, 37);
   assert.ok(REGISTERED_LAYER_IDS.includes('transit'));
   assert.deepEqual(REGISTERED_LAYER_IDS, [...REGISTERED_LAYER_IDS].sort());
   assert.deepEqual(LEGACY_LAYER_STATE_TOKENS, {
@@ -243,17 +243,25 @@ test('production registry is exact, canonical, and rejects incomplete contracts'
   for (const [id, token] of Object.entries(LEGACY_LAYER_STATE_TOKENS)) {
     assert.equal(LAYER_STATE_TOKEN_RESERVATIONS[id], token);
   }
-  assert.equal(nextLayerStateToken(), '00');
+  assert.equal(nextLayerStateToken(), '01');
+  // The allocation rules below replay upstream's ledger, before this fork
+  // allocated '00' to port-emissions.
+  const UPSTREAM = Object.fromEntries(
+    Object.entries(LAYER_STATE_TOKEN_RESERVATIONS).filter(
+      ([id]) => id !== 'port-emissions',
+    ),
+  );
+  assert.equal(nextLayerStateToken(UPSTREAM), '00');
   assert.equal(
     nextLayerStateToken({
-      ...LAYER_STATE_TOKEN_RESERVATIONS,
+      ...UPSTREAM,
       alpha: '9',
       bravo: '00',
     }),
     '01',
   );
   const digitsExhausted = {
-    ...LAYER_STATE_TOKEN_RESERVATIONS,
+    ...UPSTREAM,
     ...Object.fromEntries([...'9'].map((digit) => [`prior-${digit}`, digit])),
   };
   assert.equal(nextLayerStateToken(digitsExhausted), '00');
@@ -304,8 +312,8 @@ test('production registry is exact, canonical, and rejects incomplete contracts'
     true,
   );
   assert.equal(
-    validateLayerStateAllocations(LAYER_STATE_TOKEN_RESERVATIONS, {
-      ...LAYER_STATE_TOKEN_RESERVATIONS,
+    validateLayerStateAllocations(UPSTREAM, {
+      ...UPSTREAM,
       future: '00',
       next: '01',
     }),
@@ -313,8 +321,8 @@ test('production registry is exact, canonical, and rejects incomplete contracts'
   );
   assert.throws(
     () =>
-      validateLayerStateAllocations(LAYER_STATE_TOKEN_RESERVATIONS, {
-        ...LAYER_STATE_TOKEN_RESERVATIONS,
+      validateLayerStateAllocations(UPSTREAM, {
+        ...UPSTREAM,
         future: '01',
       }),
     /next free token 00/,
@@ -341,8 +349,8 @@ test('production registry is exact, canonical, and rejects incomplete contracts'
   assert.throws(
     () =>
       validateLayerStateAllocations(
-        { ...LAYER_STATE_TOKEN_RESERVATIONS, merged: '9' },
-        { ...LAYER_STATE_TOKEN_RESERVATIONS, merged: '9', competing: '9' },
+        { ...UPSTREAM, merged: '9' },
+        { ...UPSTREAM, merged: '9', competing: '9' },
       ),
     /next free token 00/,
   );
@@ -500,7 +508,7 @@ test('unknown enabled-layer tokens reject the payload instead of becoming an emp
 });
 
 test('malformed enabled-layer lists reject the entire payload', () => {
-  for (const value of ['.c', 'c.', 'c..e', 'c.c', '00', 'c.00']) {
+  for (const value of ['.c', 'c.', 'c..e', 'c.c', 'zz', 'c.zz']) {
     assert.equal(
       decodeLayerStateParams(new URLSearchParams(`v=2&l=${value}`)),
       null,
