@@ -1,5 +1,9 @@
 import * as Cesium from 'cesium';
-import { portRouteHash } from './share/portRoute.js';
+import {
+  homePortPath,
+  PORT_FLY_IN_SECONDS,
+  portRouteHash,
+} from './share/portRoute.js';
 import { BLOOM_INTENSITY_DEFAULT, BLOOM_SCALE_VERSION } from './bloom.js';
 import {
   migrateDetectionState,
@@ -157,13 +161,20 @@ export class ShareLinkManager {
     this._initialShareCode = null;
     // A port page (/ports/<state>/<name>) with no hash of its own opens on
     // that port, as if it were a share of the port's view.
+    // On a deployment with VITE_HOME_PORT_PATH set, a bare `/` does the same
+    // for its home port. Either way the app opens on the globe and flies in.
     const portHash =
-      code === null && !hash ? portRouteHash(window.location.pathname) : null;
+      code === null && !hash
+        ? portRouteHash(window.location.pathname, undefined, {
+            homePath: homePortPath(),
+          })
+        : null;
     const state =
       code === null
         ? this._parseShareHash(portHash ?? hash)
         : this._parseShareCode(code);
     if (!state) return null;
+    if (portHash) state.flightSeconds = PORT_FLY_IN_SECONDS;
     this._beginIncomingRestore(state);
     return state;
   }
@@ -369,7 +380,7 @@ export class ShareLinkManager {
       // navigation. A later user or voice command wins over delayed restore.
       this.viewer.camera.flyTo({
         ...view,
-        duration: 3.0,
+        duration: state.flightSeconds ?? 3.0,
         easingFunction: Cesium.EasingFunction.CUBIC_IN_OUT,
         complete: () => {
           if (
