@@ -27,7 +27,7 @@ test('the Hueneme seed registry validates and matches the 2023 workbook fleet', 
   const summary = inventorySummary(HUENEME_REGISTRY);
   assert.deepEqual(summary.utr, { diesel: 25, electric: 2 });
   assert.equal(summary.berth.none, 9);
-  assert.deepEqual(summary.mobile_harbor_crane, { diesel: 2, hybrid: 2 });
+  assert.deepEqual(summary.mobile_harbor_crane, { diesel: 1, hybrid: 3 });
 });
 
 test('registry validation reports bad classes, references and duplicates', () => {

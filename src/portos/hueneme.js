@@ -260,13 +260,13 @@ export const FLEET_PLAN = Object.freeze({
   2023: {
     utr: [25, 2],
     forklift_class_v: [3, 0],
-    harbor_crane: [2, 2],
+    harbor_crane: [1, 3],
     reach_stacker: [3, 0],
   },
   2024: {
     utr: [25, 2],
     forklift_class_v: [3, 0],
-    harbor_crane: [1, 3],
+    harbor_crane: [0, 4],
     reach_stacker: [3, 0],
   },
   2025: {
@@ -415,9 +415,9 @@ export const HUENEME_REGISTRY = Object.freeze({
     ...fleetAssets('utr', 25, 2),
     ...fleetAssets('forklift_class_v', 3, 0),
     // Four Liebherr mobile harbor cranes (Ports America). Press releases name
-    // the 2013 LHM 420 and plug-in hybrids delivered in 2019 and 2022; the
-    // powertrain of the fourth is unconfirmed and is listed as diesel.
-    ...fleetAssets('harbor_crane', 2, 2, 'hybrid'),
+    // the 2013 LHM 420 and plug-in hybrids delivered in 2019 and 2022; port
+    // staff confirmed the fourth is also a hybrid.
+    ...fleetAssets('harbor_crane', 1, 3, 'hybrid'),
     ...fleetAssets('reach_stacker', 3, 0),
   ],
 });

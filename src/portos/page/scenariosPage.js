@@ -377,7 +377,7 @@ function renderNotes() {
     `Rate: ${tariff.name}. ${tariff.status}. Source: ${tariff.source}.`,
     'Winter super-off-peak is modeled as 8 a.m. to 4 p.m.; the start hour still needs confirming in the SCE tariff book.',
     'Equipment specs, crew templates, fleet plan and capex come from the POH Utilization Model (V23MFE), except the harbor cranes.',
-    "The port has four Liebherr mobile harbor cranes. Each draws 322.5 kWh per working hour: the LHM 420 Litronic 750 kW rating times a 0.43 crane load factor. Plug-in hybrids draw from the meter while working. The 2023 inventory has two plug-in hybrids and two diesel cranes (the fourth crane's powertrain is unconfirmed); the fleet plan converts one a year in 2024 and 2025, following the workbook's purchase dates.",
+    'The port has four Liebherr mobile harbor cranes. Each draws 322.5 kWh per working hour: the LHM 420 Litronic 750 kW rating times a 0.43 crane load factor. Plug-in hybrids draw from the meter while working. The 2023 inventory has three plug-in hybrids and one diesel crane; the fleet plan replaces the diesel crane in 2024.',
     'Light-duty vehicles and Class IV forklifts are not in the registry yet, so they appear as diesel units sized to demand.',
     `Charger efficiency 92%; a unit that runs flat charges back to ${Math.round(DEFAULT_SCENARIO.reserve * 100)}% before returning to work. Diesel CO2 uses ${FACTORS.dieselKgCo2PerGallon} kg per gallon (EPA).`,
     'Building loads are zero until utility bills are entered; the meter here is a single placeholder service for CHE charging.',
