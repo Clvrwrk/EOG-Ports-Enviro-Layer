@@ -1,4 +1,5 @@
 import { isRecognizedAisEnvelope } from '../../../src/data/aisStreamAdapter.js';
+import { PORT_PROFILES, distanceNm } from '../../../src/emissions/ports.js';
 export const AISSTREAM_CACHE_MAX = 50000;
 export const AISSTREAM_STALE_MS = 30 * 60 * 1000;
 // Per-MMSI recent-path ring buffers (PRD WS-F F3). Float32 lat/lon (~1m
@@ -123,6 +124,7 @@ export function ingestAisStreamEnvelope(envelope) {
     // trail spacing and dead reckoning depend on true fix epochs.
     last_position_epoch: aisEpochSeconds(metadata.time_utc ?? metadata.TimeUtc),
     _updatedAt: Date.now(),
+    _portPriority: isPortPriorityPosition(lat, lon),
   });
 
   appendAisTrackSample(
@@ -257,14 +259,37 @@ function vesselTypeFromAis(message, staticData = {}) {
   );
 }
 
+/**
+ * Whether a position lies in a port profile's approach area. A global feed
+ * delivers far more vessels than the row cap, and a quiet port's ships would
+ * otherwise lose every slot to busier waters; these are kept and sent first
+ * so the port emissions layer always sees its own traffic.
+ */
+export function isPortPriorityPosition(lat, lon, profiles = PORT_PROFILES) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return false;
+  return profiles.some((profile) => {
+    const g = profile.geofences;
+    return (
+      distanceNm(lon, lat, g.entrance.lon, g.entrance.lat) <= g.approachRadiusNm
+    );
+  });
+}
+
+const newestFirst = (a, b) => b._updatedAt - a._updatedAt;
+
 export function aisStreamRows(maxRows) {
   const cutoff = Date.now() - AISSTREAM_STALE_MS;
-  const rows = [];
+  const priority = [];
+  const rest = [];
   for (const row of _aisStreamVessels.values()) {
-    if (row._updatedAt >= cutoff) rows.push(row);
+    if (row._updatedAt < cutoff) continue;
+    (row._portPriority ? priority : rest).push(row);
   }
-  rows.sort((a, b) => b._updatedAt - a._updatedAt);
-  return rows.slice(0, maxRows).map(({ _updatedAt, ...row }) => row);
+  priority.sort(newestFirst);
+  rest.sort(newestFirst);
+  return [...priority, ...rest]
+    .slice(0, maxRows)
+    .map(({ _updatedAt, _portPriority, ...row }) => row);
 }
 
 function pruneAisStreamCache() {
@@ -283,8 +308,11 @@ function pruneAisStreamCache() {
       _aisStreamTrackPending.delete(mmsi);
   }
   if (_aisStreamVessels.size <= AISSTREAM_CACHE_MAX) return;
+  // Evict the oldest non-port vessels first; port traffic goes last.
   const ordered = [..._aisStreamVessels.entries()].sort(
-    (a, b) => a[1]._updatedAt - b[1]._updatedAt,
+    (a, b) =>
+      Number(a[1]._portPriority) - Number(b[1]._portPriority) ||
+      a[1]._updatedAt - b[1]._updatedAt,
   );
   for (const [mmsi] of ordered.slice(
     0,
