@@ -131,6 +131,7 @@ export function twinFrame(result, step) {
     shorePowerKw: ship && result.shoreKw ? result.shoreKw[at] : 0,
     cranes: fleetUnits(result, 'harbor_crane', at),
     utrs: fleetUnits(result, 'utr', at),
+    reachStackers: fleetUnits(result, 'reach_stacker', at),
     siteKw: result.siteKw[at],
     meterKw: result.meterKw[at],
     batteryKw: result.battery ? result.battery.batteryKw[at] : 0,

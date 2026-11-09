@@ -1,13 +1,21 @@
 /**
- * Cesium entities for the twin: the reefer ship, four mobile harbor cranes,
- * the UTR fleet on its apron-yard loop, the charger row and the shore-power
- * vault. Colours show what each machine is doing at the current step.
+ * Cesium entities for the twin: the reefer ship at its berth, four mobile
+ * harbor cranes (stored or working beside the ship), the UTR fleet (driving
+ * between the apron and the yard, on the charge ports or in the diesel
+ * queues), the reach stackers and labelled landmarks. Colours show what each
+ * machine is doing at the current step.
  *
  * Shapes are simple boxes placed relative to the ground, so they sit on
  * Google's photorealistic tiles or on the plain globe alike.
  */
 import * as Cesium from 'cesium';
-import { offsetToLonLat, pointOnLoop } from './layout.js';
+import {
+  berthPoint,
+  offsetToLonLat,
+  pointOnLoop,
+  rowSlot,
+  utrLoopFor,
+} from './layout.js';
 
 export const TWIN_ENTITY_PREFIX = 'port-twin:';
 
@@ -26,9 +34,10 @@ const DEG = Math.PI / 180;
 const REL = Cesium.HeightReference.RELATIVE_TO_GROUND;
 const color = (hex, alpha = 1) =>
   Cesium.Color.fromCssColorString(hex).withAlpha(alpha);
-
 /** Cesium heading (radians) that points a box's long (x) axis at a bearing. */
 const headingFor = (bearingDeg) => (bearingDeg - 90) * DEG;
+const UTR_HEIGHT = 1.6;
+const LOOP_SECONDS = 40;
 
 function stateColor(unit) {
   if (unit.state === 'charging') return TWIN_COLORS.charging;
@@ -51,20 +60,9 @@ export function createTwinView(dataSource, layout) {
       position,
       new Cesium.HeadingPitchRoll(headingFor(bearingDeg), pitchDeg * DEG, 0),
     );
-  const box = (
-    id,
-    offset,
-    height,
-    dimensions,
-    hex,
-    bearing = 90,
-    pitch = 0,
-  ) => {
-    const position = place(offset, height);
-    return entities.add({
+  const box = (id, dimensions, hex) =>
+    entities.add({
       id: `${TWIN_ENTITY_PREFIX}${id}`,
-      position,
-      orientation: orient(position, bearing, pitch),
       box: {
         dimensions: new Cesium.Cartesian3(...dimensions),
         material: color(hex),
@@ -73,126 +71,149 @@ export function createTwinView(dataSource, layout) {
         outlineColor: color('#0b0f17', 0.6),
       },
     });
+  const move = (entity, offset, height, bearing = 90, pitch = 0) => {
+    const position = place(offset, height);
+    entity.position = position;
+    entity.orientation = orient(position, bearing, pitch);
   };
   const paint = (entity, hex, alpha = 1) => {
     entity.box.material = new Cesium.ColorMaterialProperty(color(hex, alpha));
   };
+  const label = (id, offset, text) =>
+    entities.add({
+      id: `${TWIN_ENTITY_PREFIX}label:${id}`,
+      position: place(offset, 12),
+      label: {
+        text,
+        font: '12px system-ui, sans-serif',
+        fillColor: Cesium.Color.WHITE,
+        outlineColor: Cesium.Color.BLACK,
+        outlineWidth: 3,
+        style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+        heightReference: REL,
+        verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+        distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 2500),
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+      },
+    });
+
+  // Landmarks and berth names.
+  layout.landmarks.forEach((mark, i) =>
+    label(`mark-${i}`, mark.at, mark.label),
+  );
+  for (const [id, point] of Object.entries(layout.berths))
+    label(
+      id,
+      { east: point.east, north: point.north + 18 },
+      id.replace('-', ' '),
+    );
 
   // Ship: hull plus a bridge block at the stern. Hidden when no call.
   const s = layout.ship;
-  const hull = box(
-    'ship',
-    { east: s.east, north: s.north },
-    s.height / 2,
-    [s.length, s.beam, s.height],
-    TWIN_COLORS.hull,
-  );
-  const bridge = box(
-    'ship-bridge',
-    { east: s.east - s.length / 2 + 14, north: s.north },
-    s.height + 8,
-    [16, s.beam - 2, 16],
-    TWIN_COLORS.deck,
-  );
-  const vault = box(
-    'shore-power',
-    layout.shorePowerVault,
-    1.5,
-    [4, 4, 3],
-    TWIN_COLORS.parked,
-  );
+  const hull = box('ship', [s.length, s.beam, s.height], TWIN_COLORS.hull);
+  const bridge = box('ship-bridge', [16, s.beam - 2, 16], TWIN_COLORS.deck);
 
-  // Cranes: base, tower and a boom pitched up over the ship.
-  const cranes = layout.cranes.map((at, i) => {
+  // Cranes: base, tower and a boom pitched up toward the water (north).
+  const cranes = layout.cranes.map((spec, i) => {
     const key = `crane-${i}`;
-    const parts = [
-      box(`${key}:base`, at, 4, [12, 12, 8], TWIN_COLORS.parked),
-      box(`${key}:tower`, at, 21, [4, 4, 26], TWIN_COLORS.parked),
-      box(
-        `${key}:boom`,
-        { east: at.east, north: at.north + 21.3 },
-        42.6,
-        [46, 2.5, 2.5],
-        TWIN_COLORS.parked,
-        0,
-        22,
-      ),
-    ];
-    const smoke = entities.add({
-      id: `${TWIN_ENTITY_PREFIX}${key}:smoke`,
-      position: place(at, 14),
-      ellipsoid: {
-        radii: new Cesium.Cartesian3(3, 3, 3),
-        material: color(TWIN_COLORS.smoke, 0.45),
-        heightReference: REL,
-      },
-      show: false,
-    });
-    return { parts, smoke, at };
+    return {
+      spec,
+      base: box(`${key}:base`, [12, 12, 8], TWIN_COLORS.parked),
+      tower: box(`${key}:tower`, [4, 4, 26], TWIN_COLORS.parked),
+      boom: box(`${key}:boom`, [46, 2.5, 2.5], TWIN_COLORS.parked),
+      smoke: entities.add({
+        id: `${TWIN_ENTITY_PREFIX}${key}:smoke`,
+        ellipsoid: {
+          radii: new Cesium.Cartesian3(3, 3, 3),
+          material: color(TWIN_COLORS.smoke, 0.45),
+          heightReference: REL,
+        },
+        show: false,
+      }),
+    };
   });
+  function placeCrane(crane, at, working) {
+    move(crane.base, at, 4);
+    move(crane.tower, at, 21);
+    // Working booms reach out over the ship; stored booms rest lower.
+    const pitch = working ? 22 : 10;
+    const reach = 23 * Math.cos(pitch * DEG);
+    move(
+      crane.boom,
+      { east: at.east, north: at.north + reach },
+      34 + 23 * Math.sin(pitch * DEG),
+      0,
+      pitch,
+    );
+    crane.smoke.position = place(at, 14);
+  }
 
-  // Charger posts along the yard.
+  // Charge ports: the installed pair, plus extra posts when a scenario adds
+  // more electric UTRs than ports.
   const chargers = [];
-  const chargerOffset = (i) => ({
-    east: layout.chargerRow.east + i * layout.chargerRow.spacing,
-    north: layout.chargerRow.north,
-  });
-  const parkingOffset = (i) => ({
-    east: layout.parkingRow.east + (i % 28) * layout.parkingRow.spacing,
-    north: layout.parkingRow.north - Math.floor(i / 28) * 10,
-  });
+  const chargerSlot = (i) =>
+    rowSlot(layout.chargers.at, i, {
+      spacing: layout.chargers.spacing,
+      perRow: 10,
+    });
   function ensureChargers(count) {
     while (chargers.length < count) {
       const i = chargers.length;
-      chargers.push(
-        box(
-          `charger-${i}`,
-          { ...chargerOffset(i), north: chargerOffset(i).north - 5 },
-          1.2,
-          [1, 1, 2.4],
-          TWIN_COLORS.charger,
-        ),
-      );
+      const post = box(`charger-${i}`, [1, 1, 2.4], TWIN_COLORS.charger);
+      const slot = chargerSlot(i);
+      move(post, { east: slot.east, north: slot.north + 4 }, 1.2);
+      chargers.push(post);
     }
     chargers.forEach((entity, i) => {
       entity.show = i < count;
     });
   }
 
-  // UTRs: one entity per unit; position comes from a callback so working
-  // units drive the loop between frames.
+  // Parking: diesel UTRs fill the berth 1 queue, then the shared queue;
+  // electric UTRs wait in a row behind the charge ports.
+  const dieselSlots = layout.dieselQueues.flatMap((queue) =>
+    Array.from({ length: queue.slots }, (_, i) =>
+      rowSlot(queue.at, i, { perRow: queue.perRow }),
+    ),
+  );
+  const electricParking = (i) =>
+    rowSlot(
+      { east: layout.chargers.at.east, north: layout.chargers.at.north - 12 },
+      i,
+      { perRow: 10 },
+    );
+  const overflowParking = (i) =>
+    rowSlot(
+      {
+        east: layout.dieselQueues[0].at.east + 40,
+        north: layout.dieselQueues[0].at.north,
+      },
+      i,
+      { perRow: 8 },
+    );
+
+  // UTRs: one entity per unit; working units drive the loop between frames.
   const utrs = new Map();
   let animSeconds = 0;
-  const LOOP_SECONDS = 40;
+  let loop = utrLoopFor(layout, berthPoint(layout, 'berth-1'));
+  function utrPose(target) {
+    if (target.kind === 'loop') {
+      const p = pointOnLoop(loop, target.phase + animSeconds / LOOP_SECONDS);
+      return { at: p, bearing: p.bearing };
+    }
+    return { at: target.at, bearing: 0 };
+  }
   function utrEntity(unit) {
     let entry = utrs.get(unit.id);
     if (entry) return entry;
-    entry = { unit, target: { kind: 'parked', index: 0 } };
-    const position = new Cesium.CallbackPositionProperty(() => {
-      const t = entry.target;
-      if (t.kind === 'loop') {
-        const p = pointOnLoop(
-          layout.utrLoop,
-          t.phase + animSeconds / LOOP_SECONDS,
-        );
-        entry.bearing = p.bearing;
-        return place(p, 1.6);
-      }
-      entry.bearing = 0;
-      return place(
-        t.kind === 'charging' ? chargerOffset(t.index) : parkingOffset(t.index),
-        1.6,
-      );
-    }, false);
+    entry = { unit, target: { kind: 'parked', at: dieselSlots[0] } };
+    const position = new Cesium.CallbackPositionProperty(
+      () => place(utrPose(entry.target).at, UTR_HEIGHT),
+      false,
+    );
     const orientation = new Cesium.CallbackProperty(() => {
-      const t = entry.target;
-      const p =
-        t.kind === 'loop'
-          ? pointOnLoop(layout.utrLoop, t.phase + animSeconds / LOOP_SECONDS)
-          : t.kind === 'charging'
-            ? chargerOffset(t.index)
-            : parkingOffset(t.index);
-      return orient(place(p, 1.6), t.kind === 'loop' ? p.bearing : 0);
+      const pose = utrPose(entry.target);
+      return orient(place(pose.at, UTR_HEIGHT), pose.bearing);
     }, false);
     entry.entity = entities.add({
       id: `${TWIN_ENTITY_PREFIX}utr:${unit.id}`,
@@ -210,30 +231,65 @@ export function createTwinView(dataSource, layout) {
     return entry;
   }
 
+  // Reach stackers: parked at their spot, or working at the yard end of the
+  // UTR loop.
+  const stackers = new Map();
+  function stackerEntity(unit) {
+    let entity = stackers.get(unit.id);
+    if (!entity) {
+      entity = box(`stacker:${unit.id}`, [9, 4, 4.5], TWIN_COLORS.parked);
+      stackers.set(unit.id, entity);
+    }
+    return entity;
+  }
+
   /** Repaint and reposition everything for one frame. */
   function showFrame(frame, { shorePower }) {
-    hull.show = Boolean(frame.ship);
-    bridge.show = Boolean(frame.ship);
-    paint(
-      vault,
-      frame.ship && shorePower ? TWIN_COLORS.grid : TWIN_COLORS.parked,
-    );
+    const shipBerth = frame.ship
+      ? berthPoint(layout, frame.ship.berthId)
+      : null;
+    hull.show = Boolean(shipBerth);
+    bridge.show = Boolean(shipBerth);
+    if (shipBerth) {
+      move(hull, shipBerth, s.height / 2);
+      move(
+        bridge,
+        { east: shipBerth.east - s.length / 2 + 14, north: shipBerth.north },
+        s.height + 8,
+      );
+      paint(hull, shorePower ? '#1f6f78' : TWIN_COLORS.hull);
+    }
+    const workBerth = shipBerth ?? berthPoint(layout, 'berth-1');
+    loop = utrLoopFor(layout, workBerth);
 
+    // Working cranes line up beside the ship; the rest stay in storage.
+    let spot = 0;
     frame.cranes.forEach((unit, i) => {
       const crane = cranes[i];
       if (!crane) return;
+      const working = unit.state === 'working';
+      const at = working
+        ? {
+            east:
+              workBerth.east +
+              layout.craneWorkEast[spot++ % layout.craneWorkEast.length],
+            north: layout.apronNorth,
+          }
+        : crane.spec.park;
+      placeCrane(crane, at, working);
       const hex = stateColor(unit);
-      crane.parts.forEach((part) => paint(part, hex));
-      crane.smoke.show =
-        unit.powertrain === 'diesel' && unit.state === 'working';
+      for (const part of [crane.base, crane.tower, crane.boom])
+        paint(part, hex);
+      crane.smoke.show = unit.powertrain === 'diesel' && working;
       crane.unit = unit;
     });
 
     const electric = frame.utrs.filter((u) => u.powertrain !== 'diesel').length;
-    ensureChargers(electric);
+    ensureChargers(Math.max(layout.chargers.installed, electric));
     const working = frame.utrs.filter((u) => u.state === 'working');
     let charging = 0;
-    let parked = 0;
+    let dieselParked = 0;
+    let electricParked = 0;
     const seen = new Set();
     for (const unit of frame.utrs) {
       const entry = utrEntity(unit);
@@ -246,14 +302,48 @@ export function createTwinView(dataSource, layout) {
           phase: working.indexOf(unit) / Math.max(1, working.length),
         };
       else if (unit.state === 'charging')
-        entry.target = { kind: 'charging', index: charging++ };
-      else entry.target = { kind: 'parked', index: parked++ };
+        entry.target = { kind: 'charging', at: chargerSlot(charging++) };
+      else if (unit.powertrain === 'diesel') {
+        const i = dieselParked++;
+        entry.target = {
+          kind: 'parked',
+          at: dieselSlots[i] ?? overflowParking(i - dieselSlots.length),
+        };
+      } else
+        entry.target = {
+          kind: 'parked',
+          at: electricParking(electricParked++),
+        };
       entry.entity.box.material = new Cesium.ColorMaterialProperty(
         color(stateColor(unit)),
       );
     }
     for (const [id, entry] of utrs)
       if (!seen.has(id)) entry.entity.show = false;
+
+    const yard = {
+      east: workBerth.east,
+      north: layout.utrLoop.northTop - layout.utrLoop.depth - 12,
+    };
+    let busy = 0;
+    let idle = 0;
+    const seenStackers = new Set();
+    for (const unit of frame.reachStackers ?? []) {
+      const entity = stackerEntity(unit);
+      seenStackers.add(unit.id);
+      entity.show = true;
+      const at =
+        unit.state === 'working'
+          ? { east: yard.east - 20 + 20 * busy++, north: yard.north }
+          : rowSlot(layout.reachStackers.at, idle++, {
+              spacing: layout.reachStackers.spacing,
+            });
+      move(entity, at, 2.25, 0);
+      paint(entity, stateColor(unit));
+      entity.unit = unit;
+    }
+    for (const [id, entity] of stackers)
+      if (!seenStackers.has(id)) entity.show = false;
   }
 
   /** Which twin object an entity id belongs to, for click cards. */
@@ -270,12 +360,13 @@ export function createTwinView(dataSource, layout) {
         ? { kind: 'unit', unitId: entry.unit.id, specId: 'utr' }
         : null;
     }
+    if (key.startsWith('stacker:'))
+      return { kind: 'unit', unitId: key.slice(8), specId: 'reach_stacker' };
     const crane = key.match(/^crane-(\d+)/);
     if (crane) return { kind: 'crane', index: Number(crane[1]) };
     const charger = key.match(/^charger-(\d+)/);
     if (charger) return { kind: 'charger', index: Number(charger[1]) };
-    if (key.startsWith('ship') || key === 'shore-power')
-      return { kind: 'ship' };
+    if (key.startsWith('ship')) return { kind: 'ship' };
     return null;
   }
 
@@ -294,11 +385,7 @@ export function createTwinView(dataSource, layout) {
       const [lon, lat] = offsetToLonLat(layout.origin, c);
       return {
         // Ellipsoid height: Hueneme's geoid sits about 35 m below the ellipsoid.
-        destination: Cesium.Cartesian3.fromDegrees(
-          lon,
-          lat,
-          c.height - 35 + 60,
-        ),
+        destination: Cesium.Cartesian3.fromDegrees(lon, lat, c.height - 35),
         orientation: {
           heading: c.headingDeg * DEG,
           pitch: c.pitchDeg * DEG,

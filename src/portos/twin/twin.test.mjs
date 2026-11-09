@@ -13,10 +13,15 @@ import {
   unitCard,
 } from './frame.js';
 import {
+  SURVEYED,
   TWIN_LAYOUT,
+  berthPoint,
+  lonLatToOffset,
   loopLength,
   offsetToLonLat,
   pointOnLoop,
+  rowSlot,
+  utrLoopFor,
 } from './layout.js';
 
 const baseline = runScenario(scenarioFromDecisions(DEFAULT_DECISIONS));
@@ -86,16 +91,30 @@ test('ship navigation steps between reefer call starts', () => {
   assert.equal(nextCallStart(baseline, second, -1), first);
 });
 
-test('layout helpers place points in metres and walk the UTR loop', () => {
+test('layout helpers place surveyed points in metres and walk the UTR loop', () => {
   const [lon, lat] = offsetToLonLat(TWIN_LAYOUT.origin, {
     east: 0,
     north: 111.32,
   });
   assert.ok(Math.abs(lat - TWIN_LAYOUT.origin.lat - 0.001) < 1e-9);
   assert.equal(lon, TWIN_LAYOUT.origin.lon);
-  assert.equal(loopLength(TWIN_LAYOUT.utrLoop), 2 * 140 + 2 * 86);
-  const start = pointOnLoop(TWIN_LAYOUT.utrLoop, 0);
-  assert.equal(start.bearing, 90);
-  const quarter = pointOnLoop(TWIN_LAYOUT.utrLoop, 0.5);
-  assert.ok(quarter.north < -24);
+  // A surveyed point round-trips through metres.
+  const offset = lonLatToOffset(TWIN_LAYOUT.origin, SURVEYED.berth2);
+  const [lon2, lat2] = offsetToLonLat(TWIN_LAYOUT.origin, offset);
+  assert.ok(Math.abs(lon2 - SURVEYED.berth2[1]) < 1e-9);
+  assert.ok(Math.abs(lat2 - SURVEYED.berth2[0]) < 1e-9);
+  // Berth 2 is about 230 m east of berth 1; the cranes' apron is south of both.
+  assert.ok(offset.east > 200 && offset.east < 260);
+  assert.ok(TWIN_LAYOUT.apronNorth < 0);
+  assert.equal(
+    berthPoint(TWIN_LAYOUT, 'berth-3'),
+    TWIN_LAYOUT.berths['berth-2'],
+  );
+  const loop = utrLoopFor(TWIN_LAYOUT, TWIN_LAYOUT.berths['berth-1']);
+  assert.equal(loopLength(loop), 2 * 110 + 2 * 70);
+  assert.equal(pointOnLoop(loop, 0).bearing, 90);
+  assert.deepEqual(
+    rowSlot({ east: 0, north: 0 }, 9, { spacing: 3.5, perRow: 8, rowGap: 9 }),
+    { east: 3.5, north: -9 },
+  );
 });

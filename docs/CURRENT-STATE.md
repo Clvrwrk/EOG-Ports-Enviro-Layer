@@ -155,10 +155,13 @@ implementations.
 
 The Port Emissions layer now mounts a 3D scenario twin of Hueneme's reefer
 berth (`src/portos/twin/`), wired in `src/app/layers/portEmissions.js`. Boxes
-for the reefer ship, the four mobile harbor cranes, the UTR fleet, the charger
-row and the shore-power vault are placed relative to the ground at
-APPROXIMATE positions (`layout.js`, anchored on the berth geofence's south
-wharf face) until port staff supply real ones. `frame.js` reads a
+for the reefer ship, the four mobile harbor cranes, the UTR fleet, the
+charge ports, the diesel UTR queues and the reach stackers are placed relative
+to the ground from points port staff surveyed on Google Maps (`layout.js`
+`SURVEYED`): berths 1 and 2, the crane storage spots, the eUTR charge ports,
+both diesel queues, reach stacker parking, the tug 1 berth, Del Monte building
+1 and the YARA terminal. Working cranes move from storage to the apron beside
+the ship; calls at berth 3, which has no surveyed point, draw at berth 2. `frame.js` reads a
 `runScenario` result at one 15-minute step: cranes and UTRs are coloured by
 grid power, diesel, charging or parked; working UTRs drive a loop between the
 apron and the yard. A panel plays the year (one simulated hour per second),
