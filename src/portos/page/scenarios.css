@@ -51,7 +51,12 @@ body {
   min-height: 100vh;
   background: var(--surface-0);
   color: var(--text-primary);
-  font: 14px/1.45 Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font:
+    14px/1.45 Inter,
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
   padding: 20px 16px 48px;
   box-sizing: border-box;
 }
@@ -281,4 +286,160 @@ body {
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 3px 6px;
+}
+
+/* Scenario builder: the save/share bar, the equipment grid and compare. */
+.portos {
+  --series-3: #1baf7a;
+  --series-4: #eeac1c;
+  --series-5: #7c5ad6;
+  --series-6: #d1466f;
+  --good: #1a7f4e;
+  --bad: #b3401c;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme='light'])) .portos {
+    --good: #4fc98a;
+    --bad: #ee7d55;
+  }
+}
+:root[data-theme='dark'] .portos {
+  --good: #4fc98a;
+  --bad: #ee7d55;
+}
+.bar {
+  margin-bottom: 16px;
+}
+.bar-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.bar-row + .bar-row {
+  margin-top: 10px;
+}
+.bar label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.bar select,
+.bar input[type='text'] {
+  font: inherit;
+  color: var(--text-primary);
+  background: var(--surface-0);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  min-width: 0;
+  max-width: 100%;
+}
+.bar input[type='text'] {
+  flex: 1 1 200px;
+}
+.portos button,
+.portos a.button {
+  font: inherit;
+  color: var(--text-primary);
+  background: var(--surface-0);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  text-decoration: none;
+}
+.portos button:hover:not(:disabled),
+.portos a.button:hover {
+  border-color: var(--accent);
+}
+.portos button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.portos button.primary,
+.portos a.button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.portos button.link {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--accent);
+  font-size: 11px;
+}
+.portos button.wide {
+  width: 100%;
+  margin-top: 18px;
+}
+.status {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.status.ok,
+.good {
+  color: var(--good);
+}
+.status.bad,
+.bad {
+  color: var(--bad);
+}
+.hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 4px 0 6px;
+}
+.tag {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.portos table.fleet th,
+.portos table.fleet td {
+  padding: 4px 3px;
+  white-space: normal;
+  border-bottom: 0;
+}
+.portos table.fleet th[scope='row'] {
+  font-size: 12px;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+.portos table.fleet input {
+  width: 100%;
+  min-width: 46px;
+  padding: 5px 4px;
+  text-align: right;
+}
+.checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 6px 0 10px;
+  font-size: 13px;
+}
+.checks label.inline {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin: 2px 0;
+}
+#compareTable small {
+  display: block;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+#compareTable small.good {
+  color: var(--good);
+}
+#compareTable small.bad {
+  color: var(--bad);
+}
+#compareTable th {
+  white-space: normal;
+  vertical-align: bottom;
+}
+#compareLegend {
+  flex-wrap: wrap;
+  margin: 12px 0 4px;
 }

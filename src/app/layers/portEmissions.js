@@ -12,14 +12,18 @@ export function createApplicationPortEmissions({
   vessels,
   profile = PORT_OF_HUENEME,
 }) {
+  const overlayHost = {
+    setEntries: overlays.setOverlayEntries,
+    clearSource: overlays.clearOverlaySource,
+  };
   return createPortEmissionsLayer({
     profile,
     readVessels: () => vessels.getAnalystRecords(5000),
-    overlayHost: {
-      setEntries: overlays.setOverlayEntries,
-      clearSource: overlays.clearOverlaySource,
-    },
+    overlayHost,
     requestRender: governorRequestRender,
-    twin: createPortTwin({ requestRender: governorRequestRender }),
+    twin: createPortTwin({
+      requestRender: governorRequestRender,
+      overlayHost,
+    }),
   });
 }
