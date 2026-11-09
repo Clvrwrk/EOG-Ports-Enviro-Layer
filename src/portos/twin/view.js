@@ -114,8 +114,7 @@ export function createTwinView(dataSource, layout) {
     if (entity.model) {
       entity.model.silhouetteColor = color(hex, alpha);
       entity.model.color = color(hex, alpha);
-    }
-    else
+    } else
       entity.box.material = new Cesium.ColorMaterialProperty(color(hex, alpha));
   };
   const label = (id, offset, text) =>
