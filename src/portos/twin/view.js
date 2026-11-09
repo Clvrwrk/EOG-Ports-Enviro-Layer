@@ -40,8 +40,9 @@ const headingFor = (bearingDeg) => (bearingDeg - 90) * DEG;
 const UTR_HEIGHT = 1.6;
 const CLAMP = Cesium.HeightReference.CLAMP_TO_GROUND;
 // Models follow public/models/README.md: metres, glTF +Y up, front toward
-// local -X, origin at the base. Cesium puts local +X east at heading 0.
-const MODEL_FLIP = Math.PI;
+// local -X, origin at the base. After Cesium's glTF axis correction, such a
+// model faces compass bearing b at heading b + 180 deg (as for flights).
+const modelHeading = (bearingDeg) => (bearingDeg + 180) * DEG;
 const LOOP_SECONDS = 40;
 
 function stateColor(unit) {
@@ -97,7 +98,7 @@ export function createTwinView(dataSource, layout) {
     entity.model
       ? Cesium.Transforms.headingPitchRollQuaternion(
           position,
-          new Cesium.HeadingPitchRoll(headingFor(bearing) + MODEL_FLIP, 0, 0),
+          new Cesium.HeadingPitchRoll(modelHeading(bearing), 0, 0),
         )
       : orient(position, bearing, pitch);
   const move = (entity, offset, height, bearing = 90, pitch = 0) => {

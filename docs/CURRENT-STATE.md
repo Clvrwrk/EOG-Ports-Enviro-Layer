@@ -175,7 +175,8 @@ coverage at Hueneme is thin. Like the `/scenarios` page, the twin is
 English-only and exempt from the i18n scan. Each machine type (ship, crane, utr,
 reachStacker, charger) can draw as a glTF model instead of boxes by adding
 an entry to `TWIN_LAYOUT.models`; models are tinted by state and must follow
-the `public/models/README.md` conventions. None are configured yet.
+the `public/models/README.md` conventions. The ship uses a CC BY container
+ship model; the other types are still boxes.
 
 ## Port scenarios — Port Environmental OS phase 1 — November 6, 2026
 
