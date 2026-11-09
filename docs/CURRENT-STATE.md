@@ -172,7 +172,10 @@ baseline. Clicking a machine, charger or the ship opens a data card. UTR state
 of charge is the fleet average; per-unit charge is not tracked yet. Port pages
 now switch on only `port-emissions`; Live Vessels stays off because AIS
 coverage at Hueneme is thin. Like the `/scenarios` page, the twin is
-English-only and exempt from the i18n scan.
+English-only and exempt from the i18n scan. Each machine type (ship, crane, utr,
+reachStacker, charger) can draw as a glTF model instead of boxes by adding
+an entry to `TWIN_LAYOUT.models`; models are tinted by state and must follow
+the `public/models/README.md` conventions. None are configured yet.
 
 ## Port scenarios — Port Environmental OS phase 1 — November 6, 2026
 

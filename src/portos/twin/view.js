@@ -5,8 +5,9 @@
  * queues), the reach stackers and labelled landmarks. Colours show what each
  * machine is doing at the current step.
  *
- * Shapes are simple boxes placed relative to the ground, so they sit on
- * Google's photorealistic tiles or on the plain globe alike.
+ * Each machine type draws as a glTF model when `layout.models` names one,
+ * and as simple boxes otherwise. Both sit relative to the ground, so they
+ * work on Google's photorealistic tiles or on the plain globe alike.
  */
 import * as Cesium from 'cesium';
 import {
@@ -37,6 +38,10 @@ const color = (hex, alpha = 1) =>
 /** Cesium heading (radians) that points a box's long (x) axis at a bearing. */
 const headingFor = (bearingDeg) => (bearingDeg - 90) * DEG;
 const UTR_HEIGHT = 1.6;
+const CLAMP = Cesium.HeightReference.CLAMP_TO_GROUND;
+// Models follow public/models/README.md: metres, glTF +Y up, front toward
+// local -X, origin at the base. Cesium puts local +X east at heading 0.
+const MODEL_FLIP = Math.PI;
 const LOOP_SECONDS = 40;
 
 function stateColor(unit) {
@@ -60,24 +65,51 @@ export function createTwinView(dataSource, layout) {
       position,
       new Cesium.HeadingPitchRoll(headingFor(bearingDeg), pitchDeg * DEG, 0),
     );
-  const box = (id, dimensions, hex) =>
+  const models = layout.models ?? {};
+  const boxGraphics = (dimensions, hex) => ({
+    dimensions: new Cesium.Cartesian3(...dimensions),
+    material: color(hex),
+    heightReference: REL,
+    outline: true,
+    outlineColor: color('#0b0f17', 0.6),
+  });
+  // A model keeps its own textures and takes a tint of the state colour.
+  const modelGraphics = (spec, hex) => ({
+    uri: spec.uri,
+    scale: spec.scale ?? 1,
+    minimumPixelSize: spec.minimumPixelSize ?? 16,
+    heightReference: CLAMP,
+    color: color(hex),
+    colorBlendMode: Cesium.ColorBlendMode.MIX,
+    colorBlendAmount: spec.tint ?? 0.45,
+  });
+  /** One entity: the `kind` model if configured, else a box. */
+  const part = (id, dimensions, hex, kind) =>
     entities.add({
       id: `${TWIN_ENTITY_PREFIX}${id}`,
-      box: {
-        dimensions: new Cesium.Cartesian3(...dimensions),
-        material: color(hex),
-        heightReference: REL,
-        outline: true,
-        outlineColor: color('#0b0f17', 0.6),
-      },
+      ...(kind && models[kind]
+        ? { model: modelGraphics(models[kind], hex) }
+        : { box: boxGraphics(dimensions, hex) }),
     });
+  const box = (id, dimensions, hex) => part(id, dimensions, hex);
+  /** Orientation for a box, or a model (flipped to its front-at--X rule). */
+  const orientFor = (entity, position, bearing, pitch = 0) =>
+    entity.model
+      ? Cesium.Transforms.headingPitchRollQuaternion(
+          position,
+          new Cesium.HeadingPitchRoll(headingFor(bearing) + MODEL_FLIP, 0, 0),
+        )
+      : orient(position, bearing, pitch);
   const move = (entity, offset, height, bearing = 90, pitch = 0) => {
-    const position = place(offset, height);
+    // Models stand on the ground; boxes are placed by their centre.
+    const position = place(offset, entity.model ? 0 : height);
     entity.position = position;
-    entity.orientation = orient(position, bearing, pitch);
+    entity.orientation = orientFor(entity, position, bearing, pitch);
   };
   const paint = (entity, hex, alpha = 1) => {
-    entity.box.material = new Cesium.ColorMaterialProperty(color(hex, alpha));
+    if (entity.model) entity.model.color = color(hex, alpha);
+    else
+      entity.box.material = new Cesium.ColorMaterialProperty(color(hex, alpha));
   };
   const label = (id, offset, text) =>
     entities.add({
@@ -110,17 +142,34 @@ export function createTwinView(dataSource, layout) {
 
   // Ship: hull plus a bridge block at the stern. Hidden when no call.
   const s = layout.ship;
-  const hull = box('ship', [s.length, s.beam, s.height], TWIN_COLORS.hull);
-  const bridge = box('ship-bridge', [16, s.beam - 2, 16], TWIN_COLORS.deck);
+  const hull = part(
+    'ship',
+    [s.length, s.beam, s.height],
+    TWIN_COLORS.hull,
+    'ship',
+  );
+  const bridge = hull.model
+    ? null
+    : box('ship-bridge', [16, s.beam - 2, 16], TWIN_COLORS.deck);
 
   // Cranes: base, tower and a boom pitched up toward the water (north).
   const cranes = layout.cranes.map((spec, i) => {
     const key = `crane-${i}`;
+    const base = part(`${key}:base`, [12, 12, 8], TWIN_COLORS.parked, 'crane');
+    // A crane model is one piece; the box crane needs a tower and boom.
+    const parts = base.model
+      ? [base]
+      : [
+          base,
+          box(`${key}:tower`, [4, 4, 26], TWIN_COLORS.parked),
+          box(`${key}:boom`, [46, 2.5, 2.5], TWIN_COLORS.parked),
+        ];
     return {
       spec,
-      base: box(`${key}:base`, [12, 12, 8], TWIN_COLORS.parked),
-      tower: box(`${key}:tower`, [4, 4, 26], TWIN_COLORS.parked),
-      boom: box(`${key}:boom`, [46, 2.5, 2.5], TWIN_COLORS.parked),
+      base,
+      tower: parts[1],
+      boom: parts[2],
+      parts,
       smoke: entities.add({
         id: `${TWIN_ENTITY_PREFIX}${key}:smoke`,
         ellipsoid: {
@@ -133,6 +182,11 @@ export function createTwinView(dataSource, layout) {
     };
   });
   function placeCrane(crane, at, working) {
+    crane.smoke.position = place(at, 14);
+    if (crane.base.model) {
+      move(crane.base, at, 0, 0);
+      return;
+    }
     move(crane.base, at, 4);
     move(crane.tower, at, 21);
     // Working booms reach out over the ship; stored booms rest lower.
@@ -145,7 +199,6 @@ export function createTwinView(dataSource, layout) {
       0,
       pitch,
     );
-    crane.smoke.position = place(at, 14);
   }
 
   // Charge ports: the installed pair, plus extra posts when a scenario adds
@@ -159,7 +212,12 @@ export function createTwinView(dataSource, layout) {
   function ensureChargers(count) {
     while (chargers.length < count) {
       const i = chargers.length;
-      const post = box(`charger-${i}`, [1, 1, 2.4], TWIN_COLORS.charger);
+      const post = part(
+        `charger-${i}`,
+        [1, 1, 2.4],
+        TWIN_COLORS.charger,
+        'charger',
+      );
       const slot = chargerSlot(i);
       move(post, { east: slot.east, north: slot.north + 4 }, 1.2);
       chargers.push(post);
@@ -207,26 +265,22 @@ export function createTwinView(dataSource, layout) {
     let entry = utrs.get(unit.id);
     if (entry) return entry;
     entry = { unit, target: { kind: 'parked', at: dieselSlots[0] } };
-    const position = new Cesium.CallbackPositionProperty(
-      () => place(utrPose(entry.target).at, UTR_HEIGHT),
+    const entity = part(
+      `utr:${unit.id}`,
+      [7, 2.6, 3.2],
+      TWIN_COLORS.parked,
+      'utr',
+    );
+    const height = entity.model ? 0 : UTR_HEIGHT;
+    entity.position = new Cesium.CallbackPositionProperty(
+      () => place(utrPose(entry.target).at, height),
       false,
     );
-    const orientation = new Cesium.CallbackProperty(() => {
+    entity.orientation = new Cesium.CallbackProperty(() => {
       const pose = utrPose(entry.target);
-      return orient(place(pose.at, UTR_HEIGHT), pose.bearing);
+      return orientFor(entity, place(pose.at, height), pose.bearing);
     }, false);
-    entry.entity = entities.add({
-      id: `${TWIN_ENTITY_PREFIX}utr:${unit.id}`,
-      position,
-      orientation,
-      box: {
-        dimensions: new Cesium.Cartesian3(7, 2.6, 3.2),
-        material: color(TWIN_COLORS.parked),
-        heightReference: REL,
-        outline: true,
-        outlineColor: color('#0b0f17', 0.6),
-      },
-    });
+    entry.entity = entity;
     utrs.set(unit.id, entry);
     return entry;
   }
@@ -237,7 +291,12 @@ export function createTwinView(dataSource, layout) {
   function stackerEntity(unit) {
     let entity = stackers.get(unit.id);
     if (!entity) {
-      entity = box(`stacker:${unit.id}`, [9, 4, 4.5], TWIN_COLORS.parked);
+      entity = part(
+        `stacker:${unit.id}`,
+        [9, 4, 4.5],
+        TWIN_COLORS.parked,
+        'reachStacker',
+      );
       stackers.set(unit.id, entity);
     }
     return entity;
@@ -249,14 +308,15 @@ export function createTwinView(dataSource, layout) {
       ? berthPoint(layout, frame.ship.berthId)
       : null;
     hull.show = Boolean(shipBerth);
-    bridge.show = Boolean(shipBerth);
+    if (bridge) bridge.show = Boolean(shipBerth);
     if (shipBerth) {
       move(hull, shipBerth, s.height / 2);
-      move(
-        bridge,
-        { east: shipBerth.east - s.length / 2 + 14, north: shipBerth.north },
-        s.height + 8,
-      );
+      if (bridge)
+        move(
+          bridge,
+          { east: shipBerth.east - s.length / 2 + 14, north: shipBerth.north },
+          s.height + 8,
+        );
       paint(hull, shorePower ? '#1f6f78' : TWIN_COLORS.hull);
     }
     const workBerth = shipBerth ?? berthPoint(layout, 'berth-1');
@@ -278,8 +338,7 @@ export function createTwinView(dataSource, layout) {
         : crane.spec.park;
       placeCrane(crane, at, working);
       const hex = stateColor(unit);
-      for (const part of [crane.base, crane.tower, crane.boom])
-        paint(part, hex);
+      for (const piece of crane.parts) paint(piece, hex);
       crane.smoke.show = unit.powertrain === 'diesel' && working;
       crane.unit = unit;
     });
@@ -314,9 +373,7 @@ export function createTwinView(dataSource, layout) {
           kind: 'parked',
           at: electricParking(electricParked++),
         };
-      entry.entity.box.material = new Cesium.ColorMaterialProperty(
-        color(stateColor(unit)),
-      );
+      paint(entry.entity, stateColor(unit));
     }
     for (const [id, entry] of utrs)
       if (!seen.has(id)) entry.entity.show = false;

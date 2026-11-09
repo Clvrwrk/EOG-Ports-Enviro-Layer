@@ -114,6 +114,11 @@ export const TWIN_LAYOUT = Object.freeze({
     { label: 'Reach stacker parking', at: at('reachStackerParking') },
     { label: 'YARA liquid fertilizer terminal', at: at('yaraTerminal') },
   ]),
+  // Optional glTF model per machine type: { uri, scale?, tint?,
+  // minimumPixelSize? }, keyed ship, crane, utr, reachStacker or charger.
+  // Files follow public/models/README.md (metres, +Y up, front toward -X,
+  // origin at the base). A type with no entry draws as boxes.
+  models: Object.freeze({}),
   // Street-level viewpoint for "walk to the berth": south of the yard,
   // looking north-east over the queues to berth 1.
   camera: Object.freeze({
