@@ -176,8 +176,9 @@ English-only and exempt from the i18n scan. Each machine type (ship, crane, utr,
 reachStacker, charger) can draw as a glTF model instead of boxes by adding
 an entry to `TWIN_LAYOUT.models`; models are tinted by state and must follow
 the `public/models/README.md` conventions. The ship uses a CC BY container
-ship model and the cranes a generated LHM 420 (`scripts/build-lhm-crane.mjs`);
-the other types are still boxes. Models keep their own colours and show the
+ship model the cranes a generated LHM 420 (`scripts/build-lhm-crane.mjs`) and the UTRs a
+generated electric terminal tractor (`scripts/build-utr-model.mjs`); reach
+stackers and chargers are still boxes. Models keep their own colours and show the
 machine's state as a coloured outline.
 
 ## Port scenarios — Port Environmental OS phase 1 — November 6, 2026

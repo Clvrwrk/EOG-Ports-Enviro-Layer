@@ -121,6 +121,7 @@ export const TWIN_LAYOUT = Object.freeze({
   models: Object.freeze({
     ship: Object.freeze({ uri: '/models/port/container-ship.glb', tint: 0.15 }),
     crane: Object.freeze({ uri: '/models/port/lhm-420.glb' }),
+    utr: Object.freeze({ uri: '/models/port/utr.glb' }),
   }),
   // Street-level viewpoint for "walk to the berth": south of the yard,
   // looking north-east over the queues to berth 1.
