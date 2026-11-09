@@ -11,10 +11,7 @@ test('a port page path becomes a share of that port with its layers on', () => {
   assert.equal(params.get('pitch'), '-50');
   const layers = decodeLayerStateParams(params);
   assert.ok(layers, 'layer state decodes');
-  assert.deepEqual([...layers.enabledLayerIds].sort(), [
-    'ais-live-vessels',
-    'port-emissions',
-  ]);
+  assert.deepEqual([...layers.enabledLayerIds].sort(), ['port-emissions']);
 });
 
 test('other paths are not port pages', () => {

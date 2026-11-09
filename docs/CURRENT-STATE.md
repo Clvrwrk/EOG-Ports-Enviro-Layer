@@ -151,6 +151,36 @@ across the antimeridian, so they cannot use the strict ±180 check as-is, and
 `src/sources/adsbRecords.js` and `server/providers/common/geo.js` keep their own
 implementations.
 
+## Port scenario twin — November 9, 2026
+
+The Port Emissions layer now mounts a 3D scenario twin of Hueneme's reefer
+berth (`src/portos/twin/`), wired in `src/app/layers/portEmissions.js`. Boxes
+for the reefer ship, the four mobile harbor cranes, the UTR fleet, the
+charge ports, the diesel UTR queues and the reach stackers are placed relative
+to the ground from points port staff surveyed on Google Maps (`layout.js`
+`SURVEYED`): berths 1 and 2, the crane storage spots, the eUTR charge ports,
+both diesel queues, reach stacker parking, the tug 1 berth, Del Monte building
+1 and the YARA terminal. Working cranes move from storage to the apron beside
+the ship; calls at berth 3, which has no surveyed point, draw at berth 2. `frame.js` reads a
+`runScenario` result at one 15-minute step: cranes and UTRs are coloured by
+grid power, diesel, charging or parked; working UTRs drive a loop between the
+apron and the yard. A panel plays the year (one simulated hour per second),
+jumps between reefer calls, re-runs the scenario when a decision changes
+(fleet-plan year, UTR and crane mix, charging strategy, a 1 MWh / 500 kW
+battery, reefer shore power) and compares the year with the 2026 fleet-plan
+baseline. Clicking a machine, charger or the ship opens a data card. UTR state
+of charge is the fleet average; per-unit charge is not tracked yet. Port pages
+now switch on only `port-emissions`; Live Vessels stays off because AIS
+coverage at Hueneme is thin. Like the `/scenarios` page, the twin is
+English-only and exempt from the i18n scan. Each machine type (ship, crane, utr,
+reachStacker, charger) can draw as a glTF model instead of boxes by adding
+an entry to `TWIN_LAYOUT.models`; models are tinted by state and must follow
+the `public/models/README.md` conventions. The ship uses a CC BY container
+ship model the cranes a generated LHM 420 (`scripts/build-lhm-crane.mjs`) and the UTRs a
+generated electric terminal tractor (`scripts/build-utr-model.mjs`); reach
+stackers and chargers are still boxes. Models keep their own colours and show the
+machine's state as a coloured outline.
+
 ## Port scenarios — Port Environmental OS phase 1 — November 6, 2026
 
 `/scenarios` (`scenarios.html`, `src/portos/page/`) is a standalone page outside

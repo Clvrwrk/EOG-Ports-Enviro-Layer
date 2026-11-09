@@ -1,9 +1,13 @@
 import { createPortEmissionsLayer } from '../../layers/portEmissions/index.js';
 import { PORT_OF_HUENEME } from '../../emissions/ports.js';
+import { createPortTwin } from '../../portos/twin/index.js';
 import { governorRequestRender } from '../../renderGovernor.js';
 import * as overlays from '../../overlays/worldOverlay.js';
 
-/** Wire the port emissions layer to the live AIS vessel layer it reads. */
+/**
+ * Wire the port layer to the live AIS vessel layer it reads and to the
+ * scenario twin it draws while on.
+ */
 export function createApplicationPortEmissions({
   vessels,
   profile = PORT_OF_HUENEME,
@@ -16,5 +20,6 @@ export function createApplicationPortEmissions({
       clearSource: overlays.clearOverlaySource,
     },
     requestRender: governorRequestRender,
+    twin: createPortTwin({ requestRender: governorRequestRender }),
   });
 }

@@ -1,7 +1,8 @@
 /**
  * Port pages: `/<category>/<state>/<name>` (for example
  * `/ports/california/port-of-hueneme`) open the app over that port with the
- * port emissions and live vessel layers on. The page is expressed as an
+ * port layer (geofences and the scenario twin) on. Live AIS vessels are left
+ * off: coverage at Hueneme is too thin to carry the page. The page is expressed as an
  * ordinary long-form share hash, so restore, URL updates and reloads follow
  * the existing share path.
  *
@@ -13,7 +14,7 @@ import {
   LAYER_STATE_VERSION,
 } from '../data/layerState.js';
 
-const PORT_PAGE_LAYERS = Object.freeze(['port-emissions', 'ais-live-vessels']);
+const PORT_PAGE_LAYERS = Object.freeze(['port-emissions']);
 
 /**
  * The port page a bare `/` opens on this deployment, from
