@@ -151,6 +151,26 @@ across the antimeridian, so they cannot use the strict ±180 check as-is, and
 `src/sources/adsbRecords.js` and `server/providers/common/geo.js` keep their own
 implementations.
 
+## Port scenario twin — November 9, 2026
+
+The Port Emissions layer now mounts a 3D scenario twin of Hueneme's reefer
+berth (`src/portos/twin/`), wired in `src/app/layers/portEmissions.js`. Boxes
+for the reefer ship, the four mobile harbor cranes, the UTR fleet, the charger
+row and the shore-power vault are placed relative to the ground at
+APPROXIMATE positions (`layout.js`, anchored on the berth geofence's south
+wharf face) until port staff supply real ones. `frame.js` reads a
+`runScenario` result at one 15-minute step: cranes and UTRs are coloured by
+grid power, diesel, charging or parked; working UTRs drive a loop between the
+apron and the yard. A panel plays the year (one simulated hour per second),
+jumps between reefer calls, re-runs the scenario when a decision changes
+(fleet-plan year, UTR and crane mix, charging strategy, a 1 MWh / 500 kW
+battery, reefer shore power) and compares the year with the 2026 fleet-plan
+baseline. Clicking a machine, charger or the ship opens a data card. UTR state
+of charge is the fleet average; per-unit charge is not tracked yet. Port pages
+now switch on only `port-emissions`; Live Vessels stays off because AIS
+coverage at Hueneme is thin. Like the `/scenarios` page, the twin is
+English-only and exempt from the i18n scan.
+
 ## Port scenarios — Port Environmental OS phase 1 — November 6, 2026
 
 `/scenarios` (`scenarios.html`, `src/portos/page/`) is a standalone page outside

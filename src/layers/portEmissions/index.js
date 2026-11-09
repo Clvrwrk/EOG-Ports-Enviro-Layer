@@ -64,6 +64,8 @@ export function portCard({ id, position, title, details, accent, priority }) {
  * @param {object} [options.registry] Vessel characteristics registry.
  * @param {() => number} [options.now]
  * @param {number} [options.sampleMs]
+ * @param {{enable: Function, disable: Function}} [options.twin] Scenario twin
+ *   drawn into the layer's data source while the layer is on.
  */
 export function createPortEmissionsLayer({
   profile,
@@ -75,6 +77,7 @@ export function createPortEmissionsLayer({
   sampleMs = SAMPLE_MS,
   setTimer = globalThis.setInterval,
   clearTimer = globalThis.clearInterval,
+  twin = null,
 }) {
   if (!profile?.geofences) throw new TypeError('A port profile is required');
   if (typeof readVessels !== 'function')
@@ -162,7 +165,12 @@ export function createPortEmissionsLayer({
   }
 
   function publishCards() {
-    const [title, ...details] = portHeadline(profile, summary);
+    const [title, ...lines] = portHeadline(profile, summary);
+    // With the twin on and no live ships, point at the twin instead of AIS.
+    const details =
+      twin && !summary
+        ? ['Scenario twin · modeled from the POH workbook']
+        : lines;
     const cards = [
       portCard({
         id: 'headline',
@@ -210,6 +218,7 @@ export function createPortEmissionsLayer({
   function removeDataSource() {
     if (timer !== null) clearTimer(timer);
     timer = null;
+    twin?.disable();
     vesselEntities.clear();
     overlayHost.clearSource(PORT_EMISSIONS_OVERLAY_SOURCE_ID);
     if (dataSource && viewer?.dataSources?.contains?.(dataSource))
@@ -235,6 +244,7 @@ export function createPortEmissionsLayer({
       dataSource = new Cesium.CustomDataSource(PORT_EMISSIONS_LAYER_ID);
       drawGeofences();
       viewer.dataSources.add(dataSource);
+      twin?.enable(viewer, dataSource);
       sample();
       timer = setTimer(sample, sampleMs);
       requestRender('port-emissions-enable');
