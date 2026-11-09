@@ -74,15 +74,18 @@ export function createTwinView(dataSource, layout) {
     outline: true,
     outlineColor: color('#0b0f17', 0.6),
   });
-  // A model keeps its own textures and takes a tint of the state colour.
+  // A model keeps its own colours; the state colour draws as an outline
+  // (silhouette), plus an optional tint of the whole model.
   const modelGraphics = (spec, hex) => ({
     uri: spec.uri,
     scale: spec.scale ?? 1,
     minimumPixelSize: spec.minimumPixelSize ?? 16,
     heightReference: CLAMP,
+    silhouetteColor: color(hex),
+    silhouetteSize: spec.silhouette ?? 2,
     color: color(hex),
     colorBlendMode: Cesium.ColorBlendMode.MIX,
-    colorBlendAmount: spec.tint ?? 0.45,
+    colorBlendAmount: spec.tint ?? 0,
   });
   /** One entity: the `kind` model if configured, else a box. */
   const part = (id, dimensions, hex, kind) =>
@@ -108,7 +111,10 @@ export function createTwinView(dataSource, layout) {
     entity.orientation = orientFor(entity, position, bearing, pitch);
   };
   const paint = (entity, hex, alpha = 1) => {
-    if (entity.model) entity.model.color = color(hex, alpha);
+    if (entity.model) {
+      entity.model.silhouetteColor = color(hex, alpha);
+      entity.model.color = color(hex, alpha);
+    }
     else
       entity.box.material = new Cesium.ColorMaterialProperty(color(hex, alpha));
   };
