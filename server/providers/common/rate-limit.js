@@ -1,6 +1,10 @@
 import { isIPv6 } from 'node:net';
 import { makeRateLimiter } from '../../../src/sources/rateLimit.js';
 export { makeRateLimiter } from '../../../src/sources/rateLimit.js';
+import {
+  forwardedClientAddress,
+  trustedProxyEnabled,
+} from './trusted-proxy.js';
 
 /**
  * Resolve the per-IP, per-minute cap for a cost-bearing proxy from its env var.
@@ -53,12 +57,17 @@ export function makeCostRateLimiter(envValue, defaultPerMin) {
 }
 
 /**
- * Client key for rate limiting. Uses the real socket peer address only — we do
- * NOT trust X-Forwarded-For (client-controlled; a rotating value would mint fresh
- * quota and grow the limiter map). This is a localhost dev proxy, so the socket
- * address is the real client.
+ * Client key for rate limiting. By default the real socket peer address only —
+ * X-Forwarded-For is client-controlled (a rotating value would mint fresh quota
+ * and grow the limiter map). With GEV_TRUST_PROXY on, the socket peer is the
+ * owner's proxy, so the key is the address that proxy appended (the last
+ * X-Forwarded-For entry); otherwise every visitor would share one bucket.
  */
 export function clientKey(req) {
+  if (trustedProxyEnabled()) {
+    const forwarded = forwardedClientAddress(req);
+    if (forwarded) return forwarded;
+  }
   return String(req.socket?.remoteAddress || 'local');
 }
 

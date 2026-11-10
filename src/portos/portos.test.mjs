@@ -27,7 +27,21 @@ test('the Hueneme seed registry validates and matches the 2023 workbook fleet', 
   const summary = inventorySummary(HUENEME_REGISTRY);
   assert.deepEqual(summary.utr, { diesel: 25, electric: 2 });
   assert.equal(summary.berth.none, 9);
-  assert.deepEqual(summary.mobile_harbor_crane, { diesel: 1, hybrid: 3 });
+  assert.deepEqual(summary.mobile_harbor_crane, { hybrid: 4 });
+  // Every crane works at berth 1 or 2 and bills on the crane power service,
+  // not on the ships' shore power meter.
+  const shoreMeters = new Set(
+    HUENEME_REGISTRY.assets
+      .filter((asset) => asset.class === 'shore_power')
+      .map((asset) => asset.meterId),
+  );
+  for (const crane of HUENEME_REGISTRY.assets.filter(
+    (asset) => asset.class === 'mobile_harbor_crane',
+  )) {
+    assert.ok(['berth-1', 'berth-2'].includes(crane.homeId));
+    assert.equal(crane.meterId, 'meter-crane-power');
+    assert.ok(!shoreMeters.has(crane.meterId));
+  }
 });
 
 test('registry validation reports bad classes, references and duplicates', () => {
