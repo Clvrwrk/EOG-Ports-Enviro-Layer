@@ -1,7 +1,7 @@
 /**
  * /ev-planning: battery-electric drayage from the Port of Hueneme. Plan one
  * truck's round trip to a drop site with FleetVolt physics, see the fleet's
- * charging load at the port and emissions against diesel, and browse the
+ * charging load where the trucks charge and emissions against diesel, and browse the
  * fleet catalog behind the port inventory (trucks, cargo-handling
  * equipment, locomotives, harbor craft and ships).
  */
@@ -60,7 +60,7 @@ app.innerHTML = `
   <header>
     <div>
       <h1>EV Planning: Port of Hueneme drayage</h1>
-      <p class="sub">Drive a battery-electric truck from the port to a drop site and back with FleetVolt physics (terrain, payload, weather, regen). See the charge it arrives with, what a fleet doing it every day needs from the port's chargers, and what it saves against diesel.</p>
+      <p class="sub">Drive a battery-electric truck from the port to a drop site and back with FleetVolt physics (terrain, payload, weather, regen). See the charge it arrives with, what a fleet doing it every day needs from the chargers where it charges (the carrier's home yard, a third-party station or a CaaS site, never the port), and what it saves against diesel.</p>
     </div>
     <a id="twinLink" href="${TWIN_PATH}?panel=twin">Open the twin</a>
   </header>

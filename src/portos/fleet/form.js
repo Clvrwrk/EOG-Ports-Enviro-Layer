@@ -4,6 +4,7 @@
  */
 import { DEFAULT_BEV_DRAYAGE_ID, FLEET_MODELS } from './catalog.js';
 import {
+  CHARGE_LOCATIONS,
   DROP_SITES,
   FLEET_DEFAULTS,
   PAYLOAD_PRESETS,
@@ -131,6 +132,18 @@ export function createEvForm(onRun, initial = {}) {
     ],
     String(initial.chargerKw ?? FLEET_DEFAULTS.chargerKw),
   );
+  const chargeAt = select(
+    'chargeAt',
+    Object.entries(CHARGE_LOCATIONS).map(([k, c]) => [k, c.label]),
+    initial.chargeAt ?? FLEET_DEFAULTS.chargeAt,
+  );
+  const price = number(
+    'usdPerKwh',
+    initial.usdPerKwh ?? FLEET_DEFAULTS.usdPerKwh,
+    0.05,
+    1,
+    0.01,
+  );
   const run = el('button', { type: 'submit' }, 'Plan this trip');
   const status = el('p', { class: 'ev-status sub' });
   const row = (label, input) => el('label', {}, label, input);
@@ -151,7 +164,9 @@ export function createEvForm(onRun, initial = {}) {
     row('At the drop site', dropCharge),
     row('Trucks in the fleet', trucks),
     row('Round trips per truck a day', tripsPerDay),
-    row('Depot chargers at the port', chargerKw),
+    row('Where the trucks charge', chargeAt),
+    row('Charger power there', chargerKw),
+    row('Electricity price ($/kWh)', price),
     el('div', { class: 'row' }, run),
     status,
   );
@@ -171,6 +186,8 @@ export function createEvForm(onRun, initial = {}) {
         trucks: Number(trucks.value) || 1,
         tripsPerTruckPerDay: Number(tripsPerDay.value) || 1,
         chargerKw: Number(chargerKw.value),
+        chargeAt: chargeAt.value,
+        usdPerKwh: Number(price.value) || FLEET_DEFAULTS.usdPerKwh,
       },
     };
   }
@@ -252,7 +269,7 @@ export function resultView({ site, trip, fleet }) {
     ),
     rows([
       [
-        'Depot energy at POH',
+        `Charging energy at ${fleet.chargeLocation.short}`,
         `${fmt(fleet.depotKwhPerDay)} kWh/day (${fmt(fleet.depotMwhPerYear)} MWh/yr)`,
       ],
       [
@@ -260,7 +277,7 @@ export function resultView({ site, trip, fleet }) {
         `${fmt(fleet.peakKw)} kW over ${fleet.options.chargeWindowHours} h`,
       ],
       [
-        'Depot chargers',
+        `Chargers at ${fleet.chargeLocation.short}`,
         `${fleet.chargersNeeded} x ${fleet.chargerKw} kW${fleet.fitsWindow ? '' : ' (too slow for the window)'}`,
       ],
       [
@@ -284,7 +301,7 @@ export function resultView({ site, trip, fleet }) {
     el(
       'p',
       { class: 'sub' },
-      `${site.label} is an example drop site (approximate). Car routing from OpenStreetMap; terrain from Re:Earth. ${trip.outbound.disclaimer}`,
+      `${site.label} is an example drop site (approximate). Trips start and end at the POH gate; the drive to and from the carrier's home yard is not included yet. Car routing from OpenStreetMap; terrain from Re:Earth. ${trip.outbound.disclaimer}`,
     ),
   );
 }

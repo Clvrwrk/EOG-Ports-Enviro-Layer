@@ -185,8 +185,9 @@ export function planRoundTrip({
   const worst = [outbound.feasibility, inbound.feasibility].find(
     (f) => f && f.verdict !== 'feasible',
   );
-  // Energy to put back at the port depot: what the trip used, less any
-  // charging on the way, to return to the starting charge.
+  // Energy to put back where the truck charges (its home yard, a station or
+  // a CaaS site; never POH): what the trip used, less any charging on the
+  // way, to return to the starting charge.
   const enRoute =
     (dropCharge?.energyKwh ?? 0) +
     [...outbound.charging_stops, ...inbound.charging_stops].reduce(
@@ -218,6 +219,26 @@ export function planRoundTrip({
   };
 }
 
+/**
+ * Where drayage trucks charge. None of them charge at POH: they charge
+ * behind the meter at the carrier's home yard, at a third-party station,
+ * or through a Charging-as-a-Service provider at the home yard.
+ */
+export const CHARGE_LOCATIONS = Object.freeze({
+  home_yard: {
+    label: "Carrier's home yard (behind its meter)",
+    short: 'the home yard',
+  },
+  third_party: {
+    label: 'Third-party charging station (WattEV and similar)',
+    short: 'the charging station',
+  },
+  caas: {
+    label: 'Charging-as-a-Service at the home yard',
+    short: 'the CaaS site',
+  },
+});
+
 /** Defaults for the fleet day. */
 export const FLEET_DEFAULTS = Object.freeze({
   trucks: 20,
@@ -225,13 +246,14 @@ export const FLEET_DEFAULTS = Object.freeze({
   workDaysPerYear: 300,
   chargeWindowHours: 10,
   chargerKw: 150,
+  chargeAt: 'home_yard',
   usdPerKwh: 0.18,
   dieselUsdPerGallon: 3.48,
 });
 
 /**
- * A fleet doing this round trip every work day: depot energy and charger
- * power at the port, cost, and emissions against the diesel baseline.
+ * A fleet doing this round trip every work day: charging energy and charger
+ * power where the trucks charge (not at the port), cost, and emissions against the diesel baseline.
  */
 export function fleetDay(trip, options = {}) {
   const o = { ...FLEET_DEFAULTS, ...options };
@@ -265,6 +287,7 @@ export function fleetDay(trip, options = {}) {
     dieselCostPerYear: annual.dieselGal * o.dieselUsdPerGallon,
     annual,
     dieselCo2ePerMileKg: dieselPerMile.co2eKg,
+    chargeLocation: CHARGE_LOCATIONS[o.chargeAt] ?? CHARGE_LOCATIONS.home_yard,
     options: o,
   };
 }
@@ -280,7 +303,7 @@ export function verdictText(trip) {
   if (f.verdict === 'critical')
     return 'Tight: arrives with little charge to spare';
   if (f.tier === 'depot_required')
-    return 'Needs a full depot charge before leaving';
+    return 'Needs a full charge at the yard before leaving';
   return 'Not feasible: needs public heavy-duty chargers on this route (none in the model yet)';
 }
 
