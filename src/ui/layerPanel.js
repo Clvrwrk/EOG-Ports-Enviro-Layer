@@ -54,7 +54,7 @@ const PANEL_GROUPS = [
   },
   {
     label: msg('Ports'),
-    ids: ['port-emissions'],
+    ids: ['port-emissions', 'freight-footprint'],
   },
   {
     label: msg('Cameras'),
