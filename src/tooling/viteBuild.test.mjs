@@ -145,7 +145,7 @@ test('root config retains existing named exports and standalone provider order',
     assert.equal(compatibility[name], value, name);
   const config = standaloneConfig({ mode: 'test' }, { nominatimStorageDir });
   const standaloneProviders = config.plugins
-    .slice(4, -6)
+    .slice(4, -7)
     .map((plugin) => plugin.name);
   assert.equal(
     standaloneProviders.filter((name) => name === 'gemini-live-proxy').length,
@@ -161,9 +161,11 @@ test('root config retains existing named exports and standalone provider order',
       .localProviderPlugins({ nominatimStorageDir })
       .map((plugin) => plugin.name),
   );
-  assert.equal(config.plugins.at(-7).name, 'gev-key-setup');
-  // Token fallback follows real providers and local MCP before the API 404.
-  assert.equal(config.plugins.at(-6).name, 'local-mcp');
+  assert.equal(config.plugins.at(-8).name, 'gev-key-setup');
+  // Token fallback follows real providers, local MCP and the port asset
+  // admin API before the API 404.
+  assert.equal(config.plugins.at(-7).name, 'local-mcp');
+  assert.equal(config.plugins.at(-6).name, 'portos-admin');
   assert.equal(config.plugins.at(-5).name, 'google-token-unavailable');
   assert.equal(config.plugins.at(-4).name, 'api-not-found');
   // Config-only, so it sits after the provider slice rather than in it.
@@ -200,6 +202,7 @@ test('directories the server writes while it runs are kept out of the dev watche
   assert.deepEqual(plugin.config().server.watch.ignored, [
     '**/.gev-cache/**',
     '**/.gev-logs/**',
+    '**/.gev-data/**',
   ]);
 });
 
