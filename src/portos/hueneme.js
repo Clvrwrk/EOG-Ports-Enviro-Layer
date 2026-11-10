@@ -31,14 +31,18 @@ export const SPECS = Object.freeze({
     loadFactor: 0.43,
     kwhPerHour: 750 * 0.43,
     boxesPerHour: 38,
-    dieselGph: 10.57,
+    // Diesel burn for the same working load, from EPA NONROAD's fuel rate
+    // for engines over 100 hp (0.367 lb per hp-hr) and 7.1 lb per gallon:
+    // 322.5 kW / 0.7457 x 0.367 / 7.1 = 22.4 gal/hr. The workbook's 10.57
+    // was sized for its 156 kWh/hr crane.
+    dieselGph: ((750 * 0.43) / 0.7457) * (0.367 / 7.1),
     // Liebherr hybrids drive on diesel and plug into the grid to work, so
     // the electric units draw from the meter while working, with no battery.
     gridTethered: true,
     batteryKwh: 0,
     chargeKw: 0,
     source:
-      'Liebherr LHM 420 product page and 2017 LHM deck (750 kW, 38 boxes/hr); load factor 0.43 per USACE/EPA NONROAD; diesel gal/hr from the workbook',
+      'Liebherr LHM 420 product page and 2017 LHM deck (750 kW, 38 boxes/hr); load factor 0.43 and diesel fuel rate (0.367 lb/hp-hr) per USACE/EPA NONROAD',
   },
   reach_stacker: {
     label: 'Reach stacker',
