@@ -731,3 +731,30 @@ test('an upstream refusal logs its status and short codes, never its message', a
     '[openai-chat] upstream HTTP 400 code=string_above_max_length type=invalid_request_error param=tools[3].function.description',
   ]);
 });
+
+test('OpenAI chat leaves out regex patterns that use Unicode property escapes', async (t) => {
+  let sent;
+  const f = await fixture(
+    t,
+    providers.openai,
+    async (url, options) => {
+      sent = JSON.parse(options.body);
+      return Response.json(providers.openai.reply());
+    },
+    { tools: GEV_REALTIME_TOOLS },
+  );
+  assert.equal((await f.send()).status, 200);
+  const schemas = JSON.stringify(
+    sent.tools.map((tool) => tool.function.parameters),
+  );
+  // Chat Completions answers \p{L} with 400 invalid_function_parameters.
+  assert.doesNotMatch(schemas, /\\\\[pP]\{/);
+  const area = sent.tools.find((tool) => tool.function.name === 'resolve_area');
+  assert.equal(
+    area.function.parameters.properties.candidateId.pattern,
+    undefined,
+  );
+  assert.equal(area.function.parameters.properties.candidateId.maxLength, 80);
+  // Plain patterns are kept.
+  assert.match(schemas, /"pattern":"\\\\S"/);
+});

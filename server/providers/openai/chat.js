@@ -64,6 +64,38 @@ function validMessages(messages) {
   return !pending.length;
 }
 
+// Chat Completions rejects a function schema whose regex uses Unicode
+// property escapes (\p{L}) with 400 invalid_function_parameters, so those
+// patterns are left out of what OpenAI receives. Voice keeps them, and the
+// app still checks the value (isAreaCandidateId for resolve_area).
+const UNICODE_PROPERTY_ESCAPE = /\\[pP]\{/;
+function chatParameters(schema) {
+  if (Array.isArray(schema)) return schema.map(chatParameters);
+  if (!object(schema)) return schema;
+  return Object.fromEntries(
+    Object.entries(schema)
+      .filter(
+        ([key, value]) =>
+          !(
+            key === 'pattern' &&
+            typeof value === 'string' &&
+            UNICODE_PROPERTY_ESCAPE.test(value)
+          ),
+      )
+      .map(([key, value]) => [
+        key,
+        key === 'properties'
+          ? Object.fromEntries(
+              Object.entries(value).map(([name, child]) => [
+                name,
+                chatParameters(child),
+              ]),
+            )
+          : chatParameters(value),
+      ]),
+  );
+}
+
 export function createOpenAiChatHandler({
   annotationGuidance,
   tools = GEV_REALTIME_TOOLS,
@@ -126,7 +158,12 @@ export function createOpenAiChatHandler({
           tools: offeredTools(tools, { overpass }).map(
             ({ name, description, parameters }) => ({
               type: 'function',
-              function: { name, description, parameters, strict: false },
+              function: {
+                name,
+                description,
+                parameters: chatParameters(parameters),
+                strict: false,
+              },
             }),
           ),
         },
