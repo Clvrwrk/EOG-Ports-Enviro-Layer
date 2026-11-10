@@ -385,15 +385,15 @@ function fleetAssets(
 }
 
 const BERTHS = [
-  ['berth-1', 'South', true],
-  ['berth-2', 'South', true],
-  ['berth-3', 'South', false],
-  ['berth-4', 'North', false],
-  ['berth-5', 'North', false],
-  ['berth-6', 'North', false],
-  ['berth-7', 'Joint Use', false],
-  ['berth-8', 'Joint Use', false],
-  ['berth-9', 'Joint Use', false],
+  ['berth-1', 'south_terminal', true],
+  ['berth-2', 'south_terminal', true],
+  ['berth-3', 'south_terminal', false],
+  ['berth-4', 'north_terminal', false],
+  ['berth-5', 'north_terminal', false],
+  ['berth-6', 'navy_terminal', false],
+  ['berth-7', 'navy_terminal', false],
+  ['berth-8', 'navy_terminal', false],
+  ['berth-9', 'navy_terminal', false],
 ].map(([id, zone, shorePower]) => ({
   id,
   class: 'berth',
@@ -419,14 +419,14 @@ export const HUENEME_REGISTRY = Object.freeze({
     {
       id: 'meter-che',
       class: 'meter',
-      utility: 'SCE',
+      utility: 'sce',
       tariffId: 'SCE-TOU-8-D',
       note: 'placeholder: one service for CHE charging until real meters are entered',
     },
     {
       id: 'meter-crane-power',
       class: 'meter',
-      utility: 'SCE',
+      utility: 'sce',
       tariffId: 'SCE-TOU-8-D',
       note: 'placeholder: the separate crane power service built for the South Terminal cranes; the real meter and rate go in the private overlay',
     },

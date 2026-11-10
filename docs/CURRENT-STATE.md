@@ -177,8 +177,21 @@ token against the team's keys and audience (`CF_ACCESS_TEAM_DOMAIN`,
 and the twin run on the edited registry when the browser is signed in
 (`fetchAdminRegistry`), and `fleetFromRegistry` sets the builder's equipment
 counts from active units (hybrids count as electric). Anonymous visitors keep
-the built-in seed; staff records never leave the server for them. Not built
-yet: the mini map for placing assets and utility bill upload.
+the built-in seed; staff records never leave the server for them. Data entry
+is typed on purpose (Chris, 2026-11-10: no free-text boxes where a formula
+reads the value): every field is a dropdown (`enum`, `multi`, `ref`, `spec`),
+a pick-from-existing name (`choice`: operator, source, make, model, street,
+with "Add a new one…" snapped to an existing spelling), a number box with
+unit and limits (`number`, `integer`, `year`) or a code with a fixed pattern
+(`code`: MMSI, IMO with its check digit, reporting mark). Only `label` and
+`notes` are free text. `readValue` reads form boxes and spreadsheet cells
+strictly ("3" is 3, "three" is refused with the row named), option aliases
+read old spellings ("VCRR", "North Terminal"), and `migrateAsset` brings
+records saved under the older free-text form up to date: the store runs it on
+every row when it opens (logged as "Updated to the new form") and on every
+incoming asset, and the private overlay loader runs it too. Not built yet: the
+mini map for placing assets, utility bill upload, and picking equipment from
+the shared fleet catalog.
 
 ## Port asset registry — November 10, 2026
 

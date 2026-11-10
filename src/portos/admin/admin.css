@@ -282,3 +282,23 @@ table.assets tbody tr[aria-selected='true'] {
   overflow: hidden;
   clip: rect(0 0 0 0);
 }
+
+.portos .checks {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+
+.portos .checks label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: normal;
+}
+
+.portos .choice-new {
+  margin-top: 6px;
+}

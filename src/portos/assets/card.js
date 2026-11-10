@@ -16,7 +16,19 @@ function formatValue(field, value, registry) {
     case 'bool':
       return value ? 'Yes' : 'No';
     case 'number':
-      return field.unit ? `${n0(value)} ${field.unit}` : n0(value);
+    case 'integer': {
+      const text =
+        Number.isInteger(value) || Math.abs(value) >= 100
+          ? n0(value)
+          : value.toLocaleString('en-US', { maximumFractionDigits: 2 });
+      return field.unit ? `${text} ${field.unit}` : text;
+    }
+    case 'multi':
+      return Array.isArray(value)
+        ? value
+            .map((v) => field.options.find((o) => o.value === v)?.label ?? v)
+            .join(', ')
+        : String(value);
     case 'enum':
       return (
         field.options.find((option) => option.value === value)?.label ?? value

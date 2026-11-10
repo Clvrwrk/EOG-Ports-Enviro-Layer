@@ -256,3 +256,34 @@ test('fetchAdminRegistry is null unless signed in, and never throws', async () =
   assert.deepEqual(registry.assets, [{ id: 'x', class: 'gate' }]);
   assert.equal(registry.signedInAs, 'Dana');
 });
+
+test('choice lists offer the names already used, one spelling each', async () => {
+  const { choiceValues, snapChoice } = await import('./adminModel.js');
+  const assets = [
+    { operator: 'Oxnard Harbor District' },
+    { operator: 'oxnard  harbor district' },
+    { operator: 'Yara' },
+    { operator: '' },
+    {},
+  ];
+  const known = choiceValues(assets, 'operator');
+  assert.deepEqual(known, ['Oxnard Harbor District', 'Yara']);
+  assert.equal(
+    snapChoice(' OXNARD harbor   district ', known),
+    'Oxnard Harbor District',
+  );
+  assert.equal(
+    snapChoice('Fresh Del Monte Produce', known),
+    'Fresh Del Monte Produce',
+  );
+  assert.equal(snapChoice('   ', known), '');
+});
+
+test('a spreadsheet with words in number columns is refused row by row', () => {
+  const rows = parseCsv('id,lanes,hoursPerDay\ngate-a,2,16\ngate-b,three,16\n');
+  const plan = assetsFromRows(rows, 'gate');
+  assert.ok(
+    plan.errors.some((e) => /gate-b|row 3/i.test(e) && /number/.test(e)),
+    plan.errors.join('\n'),
+  );
+});

@@ -9,11 +9,13 @@
  *
  * An overlay asset whose id is already in the seed patches that asset
  * (its fields win; `null` clears a field). One with a new id is added and
- * must carry a `class`. Ids in `remove` are dropped.
+ * must carry a `class`. Ids in `remove` are dropped. Old free-text
+ * spellings ("VCRR", "North Terminal") are read as the current dropdown
+ * values (migrateAsset).
  *
  * Pure: no DOM, no fetch.
  */
-import { validateRegistry } from '../assetClasses.js';
+import { migrateAsset, validateRegistry } from '../assetClasses.js';
 
 /** The seed with the overlay applied. Throws on a malformed overlay. */
 export function applyOverlay(seed, overlay) {
@@ -34,7 +36,8 @@ export function applyOverlay(seed, overlay) {
     const merged = { ...base, ...patch };
     for (const [key, value] of Object.entries(patch))
       if (value === null) delete merged[key];
-    byId.set(patch.id, merged);
+    // Overlay files written before the typed form use old spellings.
+    byId.set(patch.id, migrateAsset(merged));
   }
   return Object.freeze({
     ...seed,
