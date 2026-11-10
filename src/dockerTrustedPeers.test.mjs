@@ -46,6 +46,9 @@ function launchWithPolicy(value, routeTable = ROUTES) {
       }));
       return { async listen() {}, printUrls() {}, async close() {} };
     }
+    // The production path builds, then previews; the policy is the same.
+    export async function build() {}
+    export const preview = createServer;
   `;
   const preload = `
     import fs from 'node:fs';

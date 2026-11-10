@@ -5,6 +5,7 @@ import {
   defaultGatewayFromRouteTable,
   unwritableRootWarning,
   resolveTrustedPeers,
+  productionMode,
 } from '../scripts/docker-start.mjs';
 
 // The shape of /proc/net/route inside a bridge-networked container:
@@ -76,4 +77,11 @@ test('the Docker install path keeps its loopback-only, launcher-owned contract',
   assert.match(compose, /^\s+- GEV_ALLOWED_HOSTS$/m, 'the host allowlist reaches Vite');
   assert.doesNotMatch(compose, /network_mode/, 'the container keeps its own network namespace');
   assert.match(compose, /^\s+- \.:\/app:z$/m, 'SELinux hosts can read the bind-mounted checkout');
+});
+
+test('the container serves a production build unless GEV_SERVE_MODE=dev', () => {
+  assert.equal(productionMode({}), true, 'a build by default');
+  assert.equal(productionMode({ GEV_SERVE_MODE: '' }), true);
+  assert.equal(productionMode({ GEV_SERVE_MODE: 'build' }), true);
+  assert.equal(productionMode({ GEV_SERVE_MODE: ' Dev ' }), false, 'the dev server is an explicit opt-in');
 });
