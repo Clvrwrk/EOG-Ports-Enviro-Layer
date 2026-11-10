@@ -1,0 +1,1 @@
+- The asset admin has no free-text boxes where a formula reads the value: dropdowns, pick-from-existing names, number boxes with units and limits, and checked codes (MMSI, IMO, reporting mark). Spreadsheet imports read "3" but refuse "three", and records saved under the old form are moved to the new values automatically. (#31)
