@@ -104,7 +104,7 @@ const CSS = `
 .portos-nav.page a{color:var(--accent,#2a78d6)}
 .portos-nav.page .links a{border:1px solid var(--border,#e2e1dc);background:var(--surface-0,#f4f4f1)}
 .portos-nav.page .links a:hover{border-color:var(--accent,#2a78d6)}
-.portos-nav.globe{position:fixed;top:100px;left:16px;z-index:45;
+.portos-nav.globe{position:fixed;top:100px;right:16px;z-index:45;
   max-width:min(600px,calc(100vw - 32px));padding:6px 10px;border-radius:10px;color:#c9d2de;
   background:rgba(10,14,22,.86);border:1px solid rgba(32,231,242,.35);backdrop-filter:blur(6px)}
 .portos-nav.globe a{color:#20e7f2}
