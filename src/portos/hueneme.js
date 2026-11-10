@@ -267,7 +267,8 @@ export const FLEET_PLAN = Object.freeze({
   2023: {
     utr: [25, 2],
     forklift_class_v: [3, 0],
-    harbor_crane: [1, 3],
+    // Port staff: all four mobile harbor cranes plug into shore power.
+    harbor_crane: [0, 4],
     reach_stacker: [3, 0],
   },
   2024: {

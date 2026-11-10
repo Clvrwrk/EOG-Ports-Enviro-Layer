@@ -151,7 +151,7 @@ app.innerHTML = `
       </fieldset>
       <fieldset>
         <legend>Shore power</legend>
-        <label class="inline"><input type="checkbox" id="shore" /> Ships plug in at berths 1-3</label>
+        <label class="inline"><input type="checkbox" id="shore" /> Ships plug in at berths 1 and 2</label>
         <div id="shoreTypes" class="checks"></div>
       </fieldset>
       <fieldset>
@@ -612,7 +612,7 @@ function renderNotes() {
     `Rate: ${tariff.name}. ${tariff.status}. Source: ${tariff.source}.`,
     'Winter super-off-peak is modeled as 8 a.m. to 4 p.m.; the start hour still needs confirming in the SCE tariff book.',
     'Equipment specs, crew templates, fleet plan and capex come from the POH Utilization Model (V23MFE), except the harbor cranes.',
-    'The port has four Liebherr mobile harbor cranes. Each draws 322.5 kWh per working hour: the LHM 420 Litronic 750 kW rating times a 0.43 crane load factor. Plug-in hybrids draw from the meter while working. The 2023 inventory has three plug-in hybrids and one diesel crane; the fleet plan replaces the diesel crane in 2024.',
+    'The port has four Liebherr mobile harbor cranes. Each draws 322.5 kWh per working hour: the LHM 420 Litronic 750 kW rating times a 0.43 crane load factor. All four plug into utility shore power at the berth to work, the same kind of service the ships plug into, so they draw from the meter rather than burn diesel.',
     'Light-duty vehicles and Class IV forklifts are not in the fleet plan, so they default to diesel units sized to demand until you set a count.',
     'ZE equipment cost in the comparison is the electric units beyond the 2023 fleet at workbook unit costs (capital less CORE voucher, plus charging infrastructure). The site battery has no cost in the workbook and is not priced.',
     `Charger efficiency ${Math.round(draft.chargerEfficiency * 100)}%; a unit that runs flat charges back to ${Math.round(draft.reserve * 100)}% before returning to work. Diesel CO2 uses ${FACTORS.dieselKgCo2PerGallon} kg per gallon (EPA).`,

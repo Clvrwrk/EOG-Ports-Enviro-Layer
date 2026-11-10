@@ -7,6 +7,7 @@
  *
  * Pure: no Cesium, no DOM.
  */
+import { RATE_SHEETS, rateSheetInput } from '../demandDriver.js';
 import { DEFAULT_SCENARIO } from '../scenario.js';
 import { FACTORS, SPECS } from '../hueneme.js';
 import { STEPS_PER_HOUR } from '../touCalendar.js';
@@ -25,6 +26,7 @@ export const DEFAULT_DECISIONS = Object.freeze({
   charging: 'asap', // key of CHARGING_STRATEGIES
   battery: 'none', // 'none' | '1mwh'
   shorePower: false,
+  rate: 'tou8', // key of RATE_SHEETS
 });
 
 const BATTERY_1MWH = Object.freeze({
@@ -60,7 +62,19 @@ export function applyDecisions(scenario, patch = {}) {
     };
   if (patch.battery === 'none') next.battery = null;
   if (patch.battery === '1mwh') next.battery = { ...BATTERY_1MWH };
+  if (patch.rate in RATE_SHEETS)
+    Object.assign(next, rateSheetInput(patch.rate));
   return next;
+}
+
+/** The rate sheet a scenario is billed on, or 'custom' if it is not listed. */
+function rateSheetKey(scenario) {
+  const match = Object.entries(RATE_SHEETS).find(
+    ([, sheet]) =>
+      sheet.tariffId === scenario.tariffId &&
+      sheet.includeDeferredDemand === Boolean(scenario.includeDeferredDemand),
+  );
+  return match ? match[0] : 'custom';
 }
 
 /** Scenario input for a set of panel decisions. */
@@ -94,6 +108,7 @@ export function decisionsFromScenario(scenario) {
         ? '1mwh'
         : 'custom',
     shorePower: Boolean(scenario.shorePower),
+    rate: rateSheetKey(scenario),
   };
 }
 

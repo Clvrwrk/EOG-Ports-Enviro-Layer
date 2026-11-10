@@ -1,0 +1,333 @@
+/*
+ * POH Twin menu panel. It takes the same place, sizes and states in the left
+ * stack as the Authoring panel; these rules mirror that panel's, by id.
+ */
+
+@media (hover: hover) and (pointer: fine) {
+  :root:not([data-ui-theme='cyber'])
+    :is(#left-panel-stack, #right-context-rail)
+    :where(
+      .data-panel-inner,
+      .utilities-panel-inner,
+      .poh-twin-panel-inner,
+      .cctv-panel-inner,
+      .weather-panel-inner,
+      .recent-imagery-panel-inner,
+      .street-level-panel-inner,
+      .global-context-panel-inner,
+      #pp-toggles:not(.collapsed),
+      #pp-toggles.collapsed > .pp-header-row
+    ) {
+    transition: border-color var(--transition-fast);
+  }
+}
+@media (hover: hover) and (pointer: fine) {
+
+  :root:not([data-ui-theme='cyber'])
+    :is(#left-panel-stack, #right-context-rail)
+    :where(
+      .data-panel-inner,
+      .utilities-panel-inner,
+      .poh-twin-panel-inner,
+      .cctv-panel-inner,
+      .weather-panel-inner,
+      .recent-imagery-panel-inner,
+      .street-level-panel-inner,
+      .global-context-panel-inner,
+      #pp-toggles:not(.collapsed),
+      #pp-toggles.collapsed > .pp-header-row
+    ):hover {
+    --rail-label-hover: var(--accent);
+    border-color: var(--glass-border-hover);
+  }
+}
+
+body.ui-clean-view #poh-twin-panel {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+body.cockpit-mode #left-panel-stack > #poh-twin-panel {
+  display: none !important;
+}
+#poh-twin-panel {
+  --panel-expanded-width: 360px;
+  /* Secondary text in Authoring: dimmer than labels, but legible on the globe. */
+  position: fixed;
+  top: calc(var(--left-stack-top) + (var(--left-stack-gap) * 2));
+  left: var(--left-stack-x);
+  right: auto;
+  bottom: auto;
+  z-index: 100;
+  width: var(--panel-expanded-width);
+  max-height: calc(100vh - 24px);
+}
+
+#left-panel-stack > #poh-twin-panel {
+  position: relative;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  left: auto;
+  z-index: auto;
+  max-height: none;
+  flex: 0 0 auto;
+  min-height: 0;
+  pointer-events: auto;
+}
+
+#left-panel-stack > #poh-twin-panel {
+  order: 4;
+}
+
+#left-panel-stack > #poh-twin-panel:not(.collapsed) {
+  box-sizing: border-box;
+  flex: 0 1 var(--left-panel-allocated-height, auto);
+  height: var(--left-panel-allocated-height, auto);
+  max-height: var(--left-panel-allocated-height, 100%);
+}
+#left-panel-stack.layout-tail
+  > #poh-twin-panel:not(
+    .collapsed
+  ) {
+  box-sizing: border-box;
+  flex: 0 0 var(--left-panel-allocated-height);
+  height: var(--left-panel-allocated-height);
+  max-height: var(--left-panel-allocated-height);
+}
+
+#left-panel-stack > #poh-twin-panel:not(.collapsed) .poh-twin-panel-inner {
+  height: 100%;
+  max-height: 100%;
+}
+
+#left-panel-stack > #poh-twin-panel:not(.collapsed) .poh-twin-panel-inner {
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+#poh-twin-panel .panel-glow {
+  position: absolute;
+  inset: -18px;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(0, 212, 255, 0.16) 0%,
+    transparent 65%
+  );
+  filter: blur(16px);
+  opacity: 0.25;
+  pointer-events: none;
+}
+
+.poh-twin-panel-inner {
+  position: relative;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--panel-radius);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 24px);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.03) inset,
+    0 1px 0 rgba(255, 255, 255, 0.06) inset;
+}
+
+#poh-twin-panel.collapsed {
+  width: var(--left-collapsed-width);
+}
+
+#poh-twin-panel.collapsed .poh-twin-panel-inner {
+  padding-bottom: 10px;
+}
+
+#poh-twin-panel.collapsed .panel-header {
+  margin-bottom: 2px;
+}
+body.recording-mode #poh-twin-panel {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+@media (max-width: 720px) {
+
+  #poh-twin-panel {
+    top: auto;
+    right: 16px;
+    left: 16px;
+    width: auto;
+    bottom: 12px;
+  }
+}
+@media (max-width: 720px) {
+
+  #poh-twin-panel.collapsed {
+    width: auto;
+  }
+}
+@media (max-width: 720px) {
+
+  #left-panel-stack > #poh-twin-panel,
+  #left-panel-stack > #poh-twin-panel.collapsed {
+    position: relative;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    left: auto;
+    width: 100%;
+  }
+}
+body.mobile-shell[data-mobile-sheet='layers'] #left-panel-stack > #poh-twin-panel {
+  position: relative;
+  inset: auto;
+  display: block;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  transform: none;
+}
+:root[data-ui-theme='cyber']
+  :is(
+    .data-panel-inner,
+    .cctv-panel-inner,
+    .weather-panel-inner,
+    .recent-imagery-panel-inner,
+    .street-level-panel-inner,
+    .poh-twin-panel-inner,
+    .utilities-panel-inner,
+    .global-context-panel-inner,
+    .radio-panel-inner,
+    #pp-toggles:not(.collapsed),
+    #pp-toggles.collapsed > .pp-header-row
+  ) {
+  border-radius: 0;
+  clip-path: var(--cyber-panel-frame);
+  box-shadow: var(--cyber-panel-shadow);
+}
+:root[data-ui-theme='cyber']
+  .poh-twin-panel-inner
+  > .panel-header {
+  min-height: 28px;
+  gap: 9px;
+  padding: 0 2px 7px 8px;
+  border-bottom: 1px solid rgba(206, 222, 226, 0.08);
+}
+
+:root[data-ui-theme='cyber']
+  .poh-twin-panel-inner
+  > .panel-header
+  .panel-title {
+  position: relative;
+}
+
+:root[data-ui-theme='cyber']
+  .poh-twin-panel-inner
+  > .panel-header
+  .panel-title::before {
+  position: absolute;
+  top: 50%;
+  left: -8px;
+  width: 3px;
+  height: 11px;
+  background: var(--cyber-red);
+  clip-path: polygon(0 0, 100% 2px, 100% calc(100% - 2px), 0 100%);
+  content: '';
+  transform: translateY(-50%);
+}
+
+:root[data-ui-theme='cyber']
+  .poh-twin-panel-inner
+  > .panel-header
+  .panel-divider {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(196, 84, 84, 0.62),
+    rgba(206, 222, 226, 0.08)
+  );
+}
+
+@media (min-width: 961px) and (min-height: 650px) {
+
+  :root[data-ui-theme='cyber']
+    body:not(.cockpit-mode)
+    #left-panel-stack:has(> [data-panel-id]:not(.collapsed))
+    > #poh-twin-panel:not(
+      .collapsed
+    ) {
+    flex: 1 1 auto;
+    height: auto;
+    max-height: none;
+  }
+}
+
+@media (min-width: 961px) and (min-height: 650px) {
+
+  :root[data-ui-theme='cyber']
+    #left-panel-stack
+    > #poh-twin-panel {
+    --panel-expanded-width: var(--cyber-panel-width);
+    width: var(--panel-expanded-width);
+  }
+}
+
+@media (min-width: 961px) and (min-height: 650px) {
+
+  :root[data-ui-theme='cyber']
+    #left-panel-stack
+    > #poh-twin-panel.collapsed {
+    width: var(--cyber-panel-collapsed-width);
+  }
+}
+
+@media (min-width: 961px) and (min-height: 650px) {
+
+  :root[data-ui-theme='cyber']
+    #left-panel-stack
+    > #poh-twin-panel.collapsed
+    .poh-twin-panel-inner {
+    box-sizing: border-box;
+    height: 50px;
+    min-height: 50px;
+    overflow: hidden;
+  }
+}
+
+@media (min-width: 961px) and (min-height: 650px) {
+
+  :root[data-ui-theme='cyber']
+    body:not(.cockpit-mode)
+    #poh-twin-panel
+    .panel-collapse-btn {
+    width: var(--cyber-panel-control-size);
+    min-width: var(--cyber-panel-control-size);
+    height: var(--cyber-panel-control-size);
+  }
+}
+
+#poh-twin-panel.collapsed .poh-twin-host {
+  display: none;
+}
+
+.poh-twin-host {
+  min-width: 0;
+}
+
+.poh-twin-empty {
+  margin: 4px 2px 8px;
+  color: rgba(232, 234, 237, 0.72);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.poh-twin-empty a {
+  color: #20e7f2;
+}
+
+/* The controls scroll under the panel's title; keep the title readable. */
+#left-panel-stack > #poh-twin-panel:not(.collapsed) .panel-header {
+  background: rgb(9 13 21 / 96%);
+}
