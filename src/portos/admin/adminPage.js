@@ -11,6 +11,7 @@ import '../page/scenarios.css';
 import './admin.css';
 import { ASSET_CLASSES, ASSET_GROUPS } from '../assetClasses.js';
 import { TWIN_PATH } from '../scenarioStore.js';
+import { mountSiteNav } from '../nav/siteNav.js';
 import {
   assetFromText,
   assetsFromRows,
@@ -417,6 +418,8 @@ function render() {
       <div class="admin-layout ${editing ? 'with-editor' : ''}">${navView()}<main>${main}</main>${editing ? editorView() : ''}</div>
     </div>`;
   }
+  // render() replaces the page, so the breadcrumb bar goes back on each time.
+  mountSiteNav({ host: app.querySelector('.portos-wrap') });
   if (focusId) document.getElementById(focusId)?.focus();
 }
 

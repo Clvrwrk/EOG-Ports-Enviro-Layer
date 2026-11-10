@@ -60,8 +60,9 @@ test('every page links to every other page and none links to itself', () => {
   assert.ok(NAV_LINKS.some((link) => link.id === 'interview'));
 });
 
-test('the scenario page and the globe both mount the bar', () => {
+test('the scenario page, the admin page and the globe all mount the bar', () => {
   const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
   assert.match(read('../page/scenariosPage.js'), /mountSiteNav\(/);
+  assert.match(read('../admin/adminPage.js'), /mountSiteNav\(/);
   assert.match(read('../../main.js'), /mountSiteNav\(\{ variant: 'globe' \}\)/);
 });
