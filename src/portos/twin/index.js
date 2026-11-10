@@ -7,6 +7,7 @@
  * layer's data source and its panel to the page.
  */
 import * as Cesium from 'cesium';
+import { fetchAdminRegistry } from '../admin/registrySource.js';
 import { runScenario } from '../scenario.js';
 import {
   baselineScenario,
@@ -65,6 +66,8 @@ export function createPortTwin({
   let library = { items: [], baselineId: null };
   let linked = null; // scenario that arrived in the page link
   let baseline = null;
+  // Run options: { registry } once a signed-in admin registry arrives.
+  let runContext = {};
   let result = null;
   let step = 0;
   let stepFloat = 0;
@@ -126,8 +129,9 @@ export function createPortTwin({
   }
 
   function run() {
-    result = runScenario(scenario);
-    if (!baseline) baseline = runScenario(baselineScenario(library));
+    result = runScenario(scenario, runContext);
+    if (!baseline)
+      baseline = runScenario(baselineScenario(library), runContext);
     step = Math.min(step, result.siteKw.length - 1);
     stepFloat = Math.min(stepFloat, result.siteKw.length - 1);
     showScenario();
@@ -239,9 +243,17 @@ export function createPortTwin({
         scenario = linked;
         activeId = LINK_ID;
       }
-      result = runScenario(scenario);
-      baseline = runScenario(baselineScenario(library));
+      result = runScenario(scenario, runContext);
+      baseline = runScenario(baselineScenario(library), runContext);
       showScenario();
+      // Staff signed in to /admin see the twin run on the registry they
+      // edited; everyone else keeps the built-in seed.
+      fetchAdminRegistry().then((registry) => {
+        if (!registry || !panel) return;
+        runContext = { registry };
+        baseline = null;
+        run();
+      });
       // Open an hour into the first reefer call of the year.
       step = nextCallStart(result, -1, 1) + STEPS_PER_HOUR;
       stepFloat = step;

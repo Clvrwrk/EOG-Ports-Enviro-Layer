@@ -151,6 +151,32 @@ across the antimeridian, so they cannot use the strict ±180 check as-is, and
 `src/sources/adsbRecords.js` and `server/providers/common/geo.js` keep their own
 implementations.
 
+## Port asset admin portal — November 10, 2026
+
+`/admin` (`admin.html`, `src/portos/admin/`) is where port staff keep the
+asset registry the scenario builder and twin run on. It lists every class in
+`ASSET_CLASSES` by section, builds each class's table and form from its
+`fields`, imports a class (or a mixed file with a `class` column) from CSV or
+Excel `.xlsx` (read in the browser by `readXlsx`, no dependency), exports CSV,
+and shows a field-by-field change history per asset and port-wide.
+`server/portos/adminApi.js` mounts `/api/portos/admin` on the Vite server;
+`server/portos/adminStore.js` keeps the registry, history and sessions in one
+`node:sqlite` file under `PORTOS_DATA_DIR` (default `.gev-data/portos`,
+git-ignored), seeded from `HUENEME_REGISTRY` on first open. Every write is
+checked with `validateRegistry` against the whole registry before it commits
+(a broken reference or a delete that would orphan other assets is refused),
+and a save carries the asset's `rev` so a stale edit is refused rather than
+overwriting someone else's. Sign-in is one staff password
+(`PORTOS_ADMIN_PASSWORD`, 8+ characters; unset keeps the portal locked) plus
+the person's name; sessions are random tokens in an HttpOnly SameSite=Strict
+cookie, writes also need an `X-Portos-Admin: 1` header, and failed sign-ins
+are throttled per IP. `src/portos/admin/registrySource.js` lets `/scenarios`
+and the twin run on the edited registry when the browser is signed in
+(`fetchAdminRegistry`), and `fleetFromRegistry` sets the builder's equipment
+counts from active units (hybrids count as electric). Anonymous visitors keep
+the built-in seed; staff records never leave the server for them. Not built
+yet: the mini map for placing assets and utility bill upload.
+
 ## Scenario builder — November 9, 2026
 
 `/scenarios` is now a full scenario builder and the twin plays what it makes.

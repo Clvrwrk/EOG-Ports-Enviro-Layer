@@ -1,0 +1,281 @@
+/* /admin: the port asset portal. Colour tokens come from scenarios.css. */
+.portos {
+  --danger: #c0392b;
+  --ok: #2e7d32;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme='light'])) .portos {
+    --danger: #ef6f60;
+    --ok: #6cc070;
+  }
+}
+:root[data-theme='dark'] .portos {
+  --danger: #ef6f60;
+  --ok: #6cc070;
+}
+.admin-layout {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.admin-layout.with-editor {
+  grid-template-columns: 240px minmax(0, 1fr) minmax(300px, 380px);
+}
+@media (max-width: 1100px) {
+  .admin-layout.with-editor {
+    grid-template-columns: 240px minmax(0, 1fr);
+  }
+  .admin-layout.with-editor .editor {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 760px) {
+  .admin-layout,
+  .admin-layout.with-editor {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .admin-nav .groups {
+    display: none;
+  }
+}
+.admin-nav select {
+  display: none;
+}
+@media (max-width: 760px) {
+  .admin-nav select {
+    display: block;
+    width: 100%;
+  }
+}
+.admin-nav h3 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin: 14px 0 4px;
+}
+.admin-nav h3:first-child {
+  margin-top: 0;
+}
+.admin-nav button.cls {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: none;
+  color: var(--text-primary);
+  font: inherit;
+  padding: 5px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.admin-nav button.cls:hover {
+  background: var(--surface-0);
+}
+.admin-nav button.cls[aria-current='true'] {
+  background: var(--accent);
+  color: #fff;
+}
+.admin-nav .count {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+}
+.admin-nav .extra {
+  margin-top: 14px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+.portos button.btn,
+.portos label.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface-0);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.portos button.btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.portos button.btn.danger {
+  color: var(--danger);
+}
+.portos button.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.toolbar .grow {
+  flex: 1 1 160px;
+}
+.portos input[type='text'],
+.portos input[type='search'],
+.portos input[type='password'],
+.portos input[type='number'],
+.portos select,
+.portos textarea {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-0);
+  color: var(--text-primary);
+  font: inherit;
+}
+.portos textarea {
+  min-height: 64px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}
+.table-scroll {
+  overflow-x: auto;
+}
+table.assets {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 13px;
+}
+table.assets th,
+table.assets td {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--grid);
+  white-space: nowrap;
+}
+table.assets th {
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 12px;
+}
+table.assets tbody tr {
+  cursor: pointer;
+}
+table.assets tbody tr:hover {
+  background: var(--surface-0);
+}
+table.assets tbody tr[aria-selected='true'] {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.editor .field {
+  margin-top: 10px;
+}
+.editor .field > label,
+.editor .field > .label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 3px;
+}
+.editor .field .req {
+  color: var(--danger);
+}
+.editor .field .help {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.editor .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+.editor .meta {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.problems {
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-top: 10px;
+  font-size: 13px;
+}
+.problems ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+.notice {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.notice.ok {
+  color: var(--ok);
+}
+.notice.bad {
+  color: var(--danger);
+}
+.history {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 13px;
+}
+.history li {
+  border-top: 1px solid var(--grid);
+  padding: 8px 0;
+}
+.history .when {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.history .diff {
+  margin: 4px 0 0;
+  padding-left: 16px;
+  color: var(--text-secondary);
+}
+.history .diff del {
+  color: var(--danger);
+}
+.history .diff ins {
+  color: var(--ok);
+  text-decoration: none;
+}
+.signin {
+  max-width: 380px;
+  margin: 40px auto;
+}
+.signin label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 12px 0 4px;
+}
+.signin .btn {
+  margin-top: 16px;
+}
+.portos code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  background: var(--surface-0);
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+.empty {
+  color: var(--text-muted);
+  padding: 16px 0;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
