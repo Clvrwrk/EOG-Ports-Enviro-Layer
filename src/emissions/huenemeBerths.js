@@ -96,8 +96,39 @@ export const HUENEME_BERTH_USE = Object.freeze({
     shorePower: false,
     plannedShorePower: '2028-Q1',
   }),
+  'berth-3': Object.freeze({
+    terminal: null,
+    mainUse: [],
+    shorePower: false,
+    note: 'not in the June 2025 terminal plan',
+  }),
+  // Berths 6-9 are the Navy Terminal (6 joint use, 7-9 Navy), matching the
+  // asset registry. The plan gives only the terminal's overall wharf line, so
+  // AIS places a stay there as 'navy-terminal', not a single berth.
+  'berth-6': Object.freeze({
+    terminal: 'navy',
+    jointUse: true,
+    mainUse: [],
+    shorePower: false,
+  }),
+  'berth-7': Object.freeze({
+    terminal: 'navy',
+    mainUse: [],
+    shorePower: false,
+  }),
+  'berth-8': Object.freeze({
+    terminal: 'navy',
+    mainUse: [],
+    shorePower: false,
+  }),
+  'berth-9': Object.freeze({
+    terminal: 'navy',
+    mainUse: [],
+    shorePower: false,
+  }),
   'navy-terminal': Object.freeze({
     terminal: 'navy',
+    berths: Object.freeze(['berth-6', 'berth-7', 'berth-8', 'berth-9']),
     mainUse: [],
     shorePower: false,
     note: 'low use: under 20 regulated calls a year (2021-2023)',
