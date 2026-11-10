@@ -31,3 +31,5 @@
 - All four Hueneme harbor cranes are plug-in from 2023: port staff say
   they work off shore power at the berth, so the 2023 fleet plan no longer
   has a diesel crane (Claude, #9).
+- Shore power is at Hueneme berths 1 and 2 only: berth 3 no longer has a
+  vault, so a ship there never plugs in (Claude, #9).

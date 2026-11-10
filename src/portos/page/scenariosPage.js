@@ -150,7 +150,7 @@ app.innerHTML = `
       </fieldset>
       <fieldset>
         <legend>Shore power</legend>
-        <label class="inline"><input type="checkbox" id="shore" /> Ships plug in at berths 1-3</label>
+        <label class="inline"><input type="checkbox" id="shore" /> Ships plug in at berths 1 and 2</label>
         <div id="shoreTypes" class="checks"></div>
       </fieldset>
       <fieldset>
