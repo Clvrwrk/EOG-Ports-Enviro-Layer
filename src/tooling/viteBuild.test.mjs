@@ -145,7 +145,7 @@ test('root config retains existing named exports and standalone provider order',
     assert.equal(compatibility[name], value, name);
   const config = standaloneConfig({ mode: 'test' }, { nominatimStorageDir });
   const standaloneProviders = config.plugins
-    .slice(4, -7)
+    .slice(5, -7)
     .map((plugin) => plugin.name);
   assert.equal(
     standaloneProviders.filter((name) => name === 'gemini-live-proxy').length,
@@ -161,6 +161,9 @@ test('root config retains existing named exports and standalone provider order',
       .localProviderPlugins({ nominatimStorageDir })
       .map((plugin) => plugin.name),
   );
+  // The site-wide sign-in gate runs ahead of every provider.
+  assert.equal(config.plugins[4].name, 'site-access-gate');
+  assert.equal(config.plugins[4].enforce, 'pre');
   assert.equal(config.plugins.at(-8).name, 'gev-key-setup');
   // Token fallback follows real providers, local MCP and the port asset
   // admin API before the API 404.

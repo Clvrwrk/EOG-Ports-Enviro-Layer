@@ -88,8 +88,10 @@
   padding-top: 10px;
 }
 .portos button.btn,
-.portos label.btn {
+.portos label.btn,
+.portos a.btn {
   display: inline-flex;
+  text-decoration: none;
   align-items: center;
   gap: 6px;
   border: 1px solid var(--border);
@@ -101,7 +103,8 @@
   border-radius: 6px;
   cursor: pointer;
 }
-.portos button.btn.primary {
+.portos button.btn.primary,
+.portos a.btn.primary {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;

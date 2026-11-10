@@ -5,6 +5,7 @@ import { createBrowserViteConfig } from '../../build/vite.js';
 import { localProviderPlugins } from '../providers/local.js';
 import { localMcpPlugin } from '../mcp/plugin.js';
 import { portosAdminPlugin } from '../portos/adminApi.js';
+import { siteGatePlugin } from '../portos/siteGate.js';
 import { apiNotFoundPlugin } from './api-not-found.js';
 import { googleTokenUnavailablePlugin } from './google-token-unavailable.js';
 import { standaloneVoiceTools } from './voiceTools.js';
@@ -24,6 +25,8 @@ export function standaloneConfig(
   const tools = standaloneVoiceTools();
   return createBrowserViteConfig({
     plugins: [
+      // Cloudflare Access sign-in for the whole site; first, before any data.
+      siteGatePlugin(),
       ...localProviderPlugins({
         realtime: { tools },
         gemini: { tools },
