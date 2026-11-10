@@ -29,6 +29,7 @@ import {
 import { TWIN_LAYOUT } from './layout.js';
 import { createTwinPanel } from './panel.js';
 import { createTwinView } from './view.js';
+import { loadVesselInventory } from '../vessels/load.js';
 
 /** Simulated hours per real second while playing. */
 const PLAY_HOURS_PER_SECOND = 1;
@@ -70,10 +71,11 @@ export function createPortTwin({
   let stepFloat = 0;
   let selected = null; // { target, x, y }
   let frame = null;
+  let vessels = null; // ship inventory, loaded once in the background
 
   function cardFor(target) {
     if (!frame || !target) return null;
-    if (target.kind === 'ship') return shipCard(frame, result);
+    if (target.kind === 'ship') return shipCard(frame, result, vessels);
     if (target.kind === 'charger')
       return chargerCard(frame, target.index, result);
     if (target.kind === 'crane') {
@@ -181,6 +183,10 @@ export function createPortTwin({
     enable(nextViewer, dataSource) {
       viewer = nextViewer;
       view = createTwinView(dataSource, layout);
+      if (!vessels)
+        loadVesselInventory().then((inventory) => {
+          vessels = inventory;
+        });
       overlayHost.setEntries(
         OVERLAY_SOURCE_ID,
         view.names().map((name) => ({

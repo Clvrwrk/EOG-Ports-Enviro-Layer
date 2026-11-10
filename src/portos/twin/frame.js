@@ -10,6 +10,7 @@
 import { DEFAULT_SCENARIO } from '../scenario.js';
 import { FACTORS, SPECS } from '../hueneme.js';
 import { STEPS_PER_HOUR } from '../touCalendar.js';
+import { vesselLine, vesselsAtBerth } from '../vessels/registry.js';
 
 const DT = 1 / STEPS_PER_HOUR;
 const REEFER_BERTHS = new Set(['berth-1', 'berth-2']);
@@ -273,8 +274,11 @@ export function chargerCard(frame, index, result) {
   };
 }
 
-/** Data card for the ship at the berth. */
-export function shipCard(frame, result) {
+/**
+ * Data card for the ship at the berth. With a ship inventory that carries
+ * call history, it also lists the real ships that most often used the berth.
+ */
+export function shipCard(frame, result, inventory = null) {
   const call = frame.ship;
   if (!call) return { title: 'No ship at the berth', rows: [] };
   const when = (step) => {
@@ -297,8 +301,25 @@ export function shipCard(frame, result) {
           : 'Off (ship runs its engines)',
       ],
       ['Schedule', 'Synthetic, from the workbook call profile'],
+      ...berthRegulars(call, inventory),
     ],
   };
+}
+
+function berthRegulars(call, inventory) {
+  const ships = vesselsAtBerth(inventory, call.berthId, {
+    cargoClass: 'reefer',
+    limit: 3,
+  });
+  if (!ships.length) return [];
+  return [
+    [
+      'Ships that call here',
+      ships
+        .map((v) => `${vesselLine(v)} · ${v.calls.berths[call.berthId]} calls`)
+        .join('; '),
+    ],
+  ];
 }
 
 /** One scenario year against the baseline, as scoreboard rows. */
