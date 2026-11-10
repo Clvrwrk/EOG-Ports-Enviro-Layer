@@ -30,6 +30,24 @@ export function billedMonthKwh(meter, month) {
 const daysIn = (year, month) => new Date(Date.UTC(year, month, 0)).getUTCDate();
 
 /**
+ * One meter's modeled kW at a step, by the same rules as the day graph:
+ * the scenario's load where it models the meter, else the month's billed
+ * kWh spread evenly (lighting over the night hours only).
+ */
+export function meterKwAt(meter, allocation, result, step) {
+  if (meter.carries.length)
+    return allocation?.byMeter.get(meter.id)?.series[step] ?? 0;
+  const { month, hour } = result.calendar[step];
+  const kwh = billedMonthKwh(meter, month);
+  if (!kwh) return 0;
+  const lighting = meter.endUse === 'lighting';
+  if (lighting && !isNight(hour)) return 0;
+  return (
+    kwh / (daysIn(result.scenario.year, month) * (lighting ? NIGHT_HOURS : 24))
+  );
+}
+
+/**
  * @param {object} registry meter registry
  * @param {object} allocation from allocateScenario
  * @param {object} result from runScenario

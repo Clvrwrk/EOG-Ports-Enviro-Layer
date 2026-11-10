@@ -1,14 +1,15 @@
 /**
  * The usage graph: a stacked 24-hour load curve by end use with a cursor at
- * the twin's clock and the day's running kWh. Draws into its own fixed box
- * at the bottom left of the page.
+ * the twin's clock and the day's running kWh, and a red line at the
+ * interval that sets the month's demand charge when it falls on this day.
+ * Draws into its own fixed box at the bottom right of the page.
  */
 const SVG = 'http://www.w3.org/2000/svg';
 const W = 440;
 const H = 110;
 const STYLE_ID = 'port-usage-style';
 const CSS = `
-.port-usage{position:fixed;left:24px;bottom:132px;z-index:40;width:${W + 20}px;background:rgba(10,14,22,.9);color:#e8ecf2;
+.port-usage{position:fixed;right:12px;bottom:64px;z-index:40;width:${W + 20}px;background:rgba(10,14,22,.9);color:#e8ecf2;
   border:1px solid #2b3648;border-radius:8px;padding:8px 10px;font:12px/1.4 system-ui,sans-serif;pointer-events:auto}
 .port-usage h3{margin:0;font-size:12px;display:flex;justify-content:space-between;gap:8px}
 .port-usage h3 b{font-variant-numeric:tabular-nums;color:#20e7f2}
@@ -68,8 +69,8 @@ export function createUsageChart() {
 
   return {
     /** Draw a dayProfile; the bands redraw only when the day changes. */
-    show(profile, signature = '') {
-      const dayKey = `${profile.dayStart}:${signature}`;
+    show(profile, signature = '', { demandStepOfDay = null } = {}) {
+      const dayKey = `${profile.dayStart}:${signature}:${demandStepOfDay}`;
       const top = Math.max(1, profile.peakKw) * 1.08;
       if (dayKey !== drawnDay) {
         drawnDay = dayKey;
@@ -98,7 +99,26 @@ export function createUsageChart() {
         cursor.setAttribute('stroke-width', '1.5');
         cursor.setAttribute('vector-effect', 'non-scaling-stroke');
         svg.append(cursor);
-        note.textContent = `Modeled${profile.sample ? ' from sample numbers' : ' from monthly bills and the scenario'}; no 15-minute meter data yet. Peak today ${n0(profile.peakKw)} kW, ${n0(profile.kwhDay)} kWh over the day.`;
+        if (demandStepOfDay != null) {
+          const mark = document.createElementNS(SVG, 'line');
+          const at = (
+            (demandStepOfDay / (profile.totalKw.length - 1)) *
+            W
+          ).toFixed(1);
+          for (const [key, value] of Object.entries({
+            x1: at,
+            x2: at,
+            y1: 0,
+            y2: H,
+            stroke: '#ff4d4d',
+            'stroke-width': 2,
+            'stroke-dasharray': '4 3',
+            'vector-effect': 'non-scaling-stroke',
+          }))
+            mark.setAttribute(key, value);
+          svg.append(mark);
+        }
+        note.textContent = `${demandStepOfDay != null ? 'Red line: the interval that sets this month\u2019s demand charge. ' : ''}Modeled${profile.sample ? ' from sample numbers' : ' from monthly bills and the scenario'}; no 15-minute meter data yet. Peak today ${n0(profile.peakKw)} kW, ${n0(profile.kwhDay)} kWh over the day.`;
       }
       const x = (profile.stepOfDay / (profile.totalKw.length - 1)) * W;
       cursor.setAttribute('x1', x.toFixed(1));

@@ -3315,5 +3315,9 @@
   "iNaturalist contributors · licences per record": "Участники iNaturalist · лицензия у каждой записи",
   "iNaturalist contributors · Acartia {count} (Salish Sea) · licences per record": "Участники iNaturalist · Acartia {count} (море Сэлиш) · лицензия у каждой записи",
   "Port Emissions": "Выбросы портов",
-  "Ports": "Порты"
+  "Ports": "Порты",
+  "POH TWIN": "ДВОЙНИК POH",
+  "Port of Hueneme scenario twin": "Сценарный двойник порта Уайними",
+  "The twin runs on the Port of Hueneme page.": "Двойник работает на странице порта Уайними.",
+  "Open it": "Открыть её"
 }

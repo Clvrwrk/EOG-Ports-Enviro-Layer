@@ -1,6 +1,7 @@
 /**
  * Cesium pins for the port's electricity meters: a column per service
- * point, coloured by end use and as tall as its yearly kWh, with a label.
+ * point, coloured by end use and as tall as its yearly kWh. Names are drawn
+ * by the app's world overlay from labels().
  * A meter whose scenario load exceeds its service turns red.
  */
 import * as Cesium from 'cesium';
@@ -40,20 +41,6 @@ export function createMeterView(dataSource, registry) {
         outline: true,
         outlineColor: color('#0b0f17', 0.7),
       },
-      label: {
-        text: meter.label,
-        font: '11px system-ui, sans-serif',
-        fillColor: Cesium.Color.WHITE,
-        outlineColor: Cesium.Color.BLACK,
-        outlineWidth: 3,
-        style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-        heightReference: REL,
-        pixelOffset: new Cesium.Cartesian2(0, -8),
-        eyeOffset: new Cesium.Cartesian3(0, height / 2 + 2, 0),
-        verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-        distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 1800),
-        disableDepthTestDistance: Number.POSITIVE_INFINITY,
-      },
     });
     pins.set(meter.id, { entity, base });
   }
@@ -65,6 +52,15 @@ export function createMeterView(dataSource, registry) {
           ? color(OVER_COLOR, 0.95)
           : pin.base;
     },
+    /** Meter names as { id, lat, lon, height, text }. */
+    labels: () =>
+      registry.meters.map((meter) => ({
+        id: meter.id,
+        lat: meter.at[0],
+        lon: meter.at[1],
+        height: pinHeight(annualKwh(meter), maxKwh),
+        text: meter.label,
+      })),
     setVisible(visible) {
       for (const pin of pins.values()) pin.entity.show = visible;
     },

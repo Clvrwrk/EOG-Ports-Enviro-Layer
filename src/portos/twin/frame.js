@@ -7,6 +7,7 @@
  *
  * Pure: no Cesium, no DOM.
  */
+import { rateSheetInput } from '../demandDriver.js';
 import { DEFAULT_SCENARIO } from '../scenario.js';
 import { FACTORS, SPECS } from '../hueneme.js';
 import { STEPS_PER_HOUR } from '../touCalendar.js';
@@ -24,6 +25,7 @@ export const DEFAULT_DECISIONS = Object.freeze({
   charging: 'asap', // key of CHARGING_STRATEGIES
   battery: 'none', // 'none' | '1mwh'
   shorePower: false,
+  rate: 'tou8', // key of RATE_SHEETS
 });
 
 /** Scenario input for a set of panel decisions. */
@@ -40,6 +42,7 @@ export function scenarioFromDecisions(decisions = {}) {
   return {
     ...DEFAULT_SCENARIO,
     name: 'Twin scenario',
+    ...rateSheetInput(d.rate),
     year: d.year,
     strategy: d.charging,
     fleet,

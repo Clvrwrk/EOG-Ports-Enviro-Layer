@@ -8,7 +8,7 @@
  *
  *   { port, source, sample?, asOf?, meters: [ {
  *       id, label, endUse, at: [lat, lon], approximate?,
- *       address?, account?, meterNumber?, tariff?, serviceKva?,
+ *       address?, account?, meterNumber?, tariff?, serviceKva?, plugs?,
  *       transformer?, circuit?, carries?: [load ids],
  *       monthlyKwh?: { 'YYYY-MM': kWh }, monthlyCost?: { 'YYYY-MM': $ },
  *       peakKw?, peakAt?, notes? } ] }
@@ -80,6 +80,8 @@ export function normalizeRegistry(raw) {
     source: raw.source ?? '',
     sample: Boolean(raw.sample),
     asOf: raw.asOf ?? null,
+    // Where the utility's feeder reaches the port: { label?, at: [lat, lon] }.
+    feed: raw.feed ?? null,
     meters: Object.freeze(meters),
   });
 }
@@ -268,6 +270,7 @@ export const SAMPLE_REGISTRY = normalizeRegistry({
       approximate: true,
       tariff: 'TOU-GS-3',
       serviceKva: 2000,
+      plugs: 120,
       peakKw: 600,
       monthlyKwh: months(
         [2025, 1],

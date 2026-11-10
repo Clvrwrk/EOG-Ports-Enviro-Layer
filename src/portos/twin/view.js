@@ -117,23 +117,13 @@ export function createTwinView(dataSource, layout) {
     } else
       entity.box.material = new Cesium.ColorMaterialProperty(color(hex, alpha));
   };
-  const label = (id, offset, text) =>
-    entities.add({
-      id: `${TWIN_ENTITY_PREFIX}label:${id}`,
-      position: place(offset, 12),
-      label: {
-        text,
-        font: '12px system-ui, sans-serif',
-        fillColor: Cesium.Color.WHITE,
-        outlineColor: Cesium.Color.BLACK,
-        outlineWidth: 3,
-        style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-        heightReference: REL,
-        verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-        distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 2500),
-        disableDepthTestDistance: Number.POSITIVE_INFINITY,
-      },
-    });
+  // Names are drawn by the app's world overlay, not as Cesium labels; the
+  // twin collects them here and hands them over (see labels()).
+  const names = [];
+  const label = (id, offset, text) => {
+    const [lon, lat] = offsetToLonLat(layout.origin, offset);
+    names.push({ id, lat, lon, text });
+  };
 
   // Landmarks and berth names.
   layout.landmarks.forEach((mark, i) =>
@@ -436,6 +426,8 @@ export function createTwinView(dataSource, layout) {
   return {
     showFrame,
     identify,
+    /** Landmark and berth names as { id, lat, lon, text }. */
+    labels: () => names,
     /** Advance the drive animation; returns true while anything moves. */
     tick(seconds) {
       animSeconds += seconds;
