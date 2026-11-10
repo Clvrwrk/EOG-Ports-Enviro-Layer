@@ -28,3 +28,6 @@
   sets the demand charge: the peak 15-minute interval, what was drawing
   power then, what each kW of it costs, a button that jumps the twin to
   that moment and a red line on the usage graph (Claude, #9).
+- All four Hueneme harbor cranes are plug-in from 2023: port staff say
+  they work off shore power at the berth, so the 2023 fleet plan no longer
+  has a diesel crane (Claude, #9).

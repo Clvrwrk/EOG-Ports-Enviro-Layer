@@ -132,7 +132,7 @@ export function buildNetwork(registry, layout, plugMap = { gangs: [] }) {
         branch(
           meter,
           String(i),
-          `${crane.label} power outlet`,
+          `${crane.label} shore power outlet`,
           'outlet',
           latLon(layout, crane.park),
         ),

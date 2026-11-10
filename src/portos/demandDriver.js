@@ -48,7 +48,7 @@ export function rateSheetInput(key) {
 
 const LOAD_LABELS = {
   shore_power: 'Shore power',
-  crane: 'Crane power',
+  crane: 'Crane shore power',
   equipment_charging: 'Equipment charging',
 };
 

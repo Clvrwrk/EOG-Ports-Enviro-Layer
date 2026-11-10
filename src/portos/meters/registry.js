@@ -24,7 +24,7 @@
 export const END_USES = Object.freeze({
   shore_power: { label: 'Shore power', color: '#20e7f2' },
   reefer: { label: 'Reefer plugs', color: '#6aa8ff' },
-  crane: { label: 'Crane power', color: '#c58bff' },
+  crane: { label: 'Crane shore power', color: '#c58bff' },
   equipment_charging: { label: 'Equipment charging', color: '#7cff8a' },
   buildings: { label: 'Buildings', color: '#ffd166' },
   lighting: { label: 'Yard and wharf lighting', color: '#f4f1de' },
