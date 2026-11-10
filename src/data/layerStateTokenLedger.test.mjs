@@ -99,7 +99,10 @@ function withPublishedBase(
 
 // Fork allocations after wildlife-sightings (the last upstream digit). The
 // allocation fixtures below replay upstream's history, so they drop these.
-const FORK_ALLOCATED_IDS = Object.freeze(['port-emissions']);
+const FORK_ALLOCATED_IDS = Object.freeze([
+  'port-emissions',
+  'freight-footprint',
+]);
 const preWildlifeRows = reservationRows.filter(
   ([id]) => id !== 'wildlife-sightings' && !FORK_ALLOCATED_IDS.includes(id),
 );
@@ -144,7 +147,7 @@ test('reservation ledger is complete, pinned, and rejects duplicate or malformed
     { ...parseLayerStateTokenReservations(reservationRows) },
     { ...LAYER_STATE_TOKEN_RESERVATIONS },
   );
-  assert.equal(Object.keys(LAYER_STATE_TOKEN_RESERVATIONS).length, 37);
+  assert.equal(Object.keys(LAYER_STATE_TOKEN_RESERVATIONS).length, 38);
   assert.deepEqual(
     { ...LAYER_STATE_TOKEN_RESERVATIONS },
     {
@@ -158,6 +161,7 @@ test('reservation ledger is complete, pinned, and rejects duplicate or malformed
       'drone-airspace': '8',
       'wildlife-sightings': '9',
       'port-emissions': '00',
+      'freight-footprint': '01',
     },
   );
   assert.throws(
@@ -414,7 +418,7 @@ test('checker reads a complete future base ledger and rejects retired-token reus
     },
     (cwd) => {
       const published = readPublishedLayerStateReservations('HEAD', cwd);
-      assert.equal(Object.keys(published).length, 38);
+      assert.equal(Object.keys(published).length, 39);
       assert.equal(published['retired-layer'], NEXT_FREE);
       assert.throws(
         () =>
