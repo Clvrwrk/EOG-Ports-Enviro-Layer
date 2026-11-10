@@ -13,7 +13,7 @@ import { FACTORS, SPECS } from '../hueneme.js';
 import { STEPS_PER_HOUR } from '../touCalendar.js';
 
 const DT = 1 / STEPS_PER_HOUR;
-const REEFER_BERTHS = new Set(['berth-1', 'berth-2', 'berth-3']);
+const REEFER_BERTHS = new Set(['berth-1', 'berth-2']);
 const UTR_UNITS = 27;
 const CRANE_UNITS = 4;
 

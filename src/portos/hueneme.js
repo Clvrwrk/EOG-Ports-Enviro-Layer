@@ -9,6 +9,8 @@
  * all of it through the admin portal as real records arrive.
  */
 
+import { BERTH_DETAILS, CRAFT_SPECS, PORT_ASSETS } from './huenemeAssets.js';
+
 const WORKBOOK = 'POH Utilization Model V23MFE';
 
 /** Per-unit equipment specs (CHE_Equipment_List). Energy per working hour. */
@@ -221,7 +223,8 @@ export const CALL_PROFILE = Object.freeze([
     meanHours: 39.7,
     template: '2G + 1H + DV',
     maxConcurrent: 1,
-    berths: ['berth-1', 'berth-2', 'berth-3'],
+    // Reefer ships work the South Terminal, Berths 1-2 (2025 terminal plan).
+    berths: ['berth-1', 'berth-2'],
     cargo: 'break-bulk reefer',
   },
   {
@@ -384,7 +387,6 @@ function fleetAssets(
 const BERTHS = [
   ['berth-1', 'South', true],
   ['berth-2', 'South', true],
-  // Port staff: shore power is at berths 1 and 2 only.
   ['berth-3', 'South', false],
   ['berth-4', 'North', false],
   ['berth-5', 'North', false],
@@ -392,15 +394,28 @@ const BERTHS = [
   ['berth-7', 'Joint Use', false],
   ['berth-8', 'Joint Use', false],
   ['berth-9', 'Joint Use', false],
-].map(([id, zone, shorePower]) => ({ id, class: 'berth', zone, shorePower }));
+].map(([id, zone, shorePower]) => ({
+  id,
+  class: 'berth',
+  zone,
+  shorePower,
+  status: 'active',
+  ...BERTH_DETAILS[id],
+}));
 
-/** The Hueneme seed registry: 2023 fleet, berths, meter and chargers. */
+/**
+ * The Hueneme seed registry: berths, buildings, yards, gates, rail, harbor
+ * craft, the 2023 cargo-handling fleet, a placeholder meter and chargers.
+ * `specs` holds the workbook's CHE specs plus harbor craft and locomotive
+ * specs (CRAFT_SPECS), which the scenario engine does not run.
+ */
 export const HUENEME_REGISTRY = Object.freeze({
   portId: 'port-of-hueneme',
-  source: WORKBOOK,
-  specs: SPECS,
+  source: `${WORKBOOK}; port-wide assets from public sources (see huenemeAssets.js)`,
+  specs: Object.freeze({ ...SPECS, ...CRAFT_SPECS }),
   assets: [
     ...BERTHS,
+    ...PORT_ASSETS,
     {
       id: 'meter-che',
       class: 'meter',
@@ -408,8 +423,16 @@ export const HUENEME_REGISTRY = Object.freeze({
       tariffId: 'SCE-TOU-8-D',
       note: 'placeholder: one service for CHE charging until real meters are entered',
     },
+    {
+      id: 'meter-crane-power',
+      class: 'meter',
+      utility: 'SCE',
+      tariffId: 'SCE-TOU-8-D',
+      note: 'placeholder: the separate crane power service built for the South Terminal cranes; the real meter and rate go in the private overlay',
+    },
     { id: 'charger-utr-01', class: 'charger', meterId: 'meter-che', kw: 50 },
     { id: 'charger-utr-02', class: 'charger', meterId: 'meter-che', kw: 50 },
+    // Port staff: only Berths 1 and 2 have ship shore power.
     ...['berth-1', 'berth-2'].map((berthId, i) => ({
       id: `shore-power-${i + 1}`,
       class: 'shore_power',
@@ -421,9 +444,22 @@ export const HUENEME_REGISTRY = Object.freeze({
     ...fleetAssets('utr', 25, 2),
     ...fleetAssets('forklift_class_v', 3, 0),
     // Four Liebherr mobile harbor cranes (Ports America). Press releases name
-    // the 2013 LHM 420 and plug-in hybrids delivered in 2019 and 2022; port
-    // staff confirmed the fourth is also a hybrid.
-    ...fleetAssets('harbor_crane', 1, 3, 'hybrid'),
+    // the 2013 LHM 420 and plug-in hybrids delivered in 2019 and 2022. Port
+    // staff confirmed all of them plug into utility-grade power at the
+    // berth, with diesel only to drive between spots. They bill on their own
+    // crane power service, not the ships' shore power meter (port staff,
+    // 2026-11-10). Cranes 1-2 work berth 1, cranes 3-4 berth 2 (twin layout).
+    ...fleetAssets('harbor_crane', 0, 4, 'hybrid').map((crane, i) => ({
+      ...crane,
+      label: `Crane ${i + 1}`,
+      make: 'Liebherr',
+      homeId: i < 2 ? 'berth-1' : 'berth-2',
+      meterId: 'meter-crane-power',
+      source:
+        'Port staff (2026-11-10): every crane plugs in at the berth and bills on the crane power service',
+      notes:
+        'Plug-in at the berth, billed on the separate crane power service rather than the ship shore power meter. The public seed uses a placeholder meter; the real meter link goes in the private overlay.',
+    })),
     ...fleetAssets('reach_stacker', 3, 0),
   ],
 });
