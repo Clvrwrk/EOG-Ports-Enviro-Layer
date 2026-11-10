@@ -10,6 +10,7 @@
 // diesel (the carbon content factor used for OGV distillate).
 
 import { callIntervals } from './aisCalls.js';
+import { HUENEME_SHORE_POWER_BERTHS } from './huenemeBerths.js';
 import { GWP_SETS, intervalEmissions, summarize } from './ogvMethod.js';
 
 const HOUR_MS = 3_600_000;
@@ -96,7 +97,10 @@ function clipRecords(records, startMs, endMs) {
 
 /**
  * Scenario switches (all optional):
- *   shorePower: true puts the ship's hotelling on shore power;
+ *   shorePower: true puts the ship's hotelling on shore power, but only for a
+ *     call at a berth that has it (shorePowerBerths, plus any berth ids the
+ *     scenario adds in scenario.addShorePowerBerths). A call at an unknown
+ *     berth stays on its own engines;
  *   tugPowertrain / pilotPowertrain: 'diesel' | 'electric' override every craft;
  *   tugTier / pilotTier: replace the engine tier (e.g. 'tier4' repower).
  * craftSpecs: { [mmsi]: spec } from the asset registry; others use DEFAULT_CRAFT.
@@ -105,8 +109,19 @@ function clipRecords(records, startMs, endMs) {
 export function callEmissions(
   call,
   rebuilt,
-  { vessel = {}, craftSpecs = {}, scenario = {}, gwpSet = GWP_SETS.AR5 } = {},
+  {
+    vessel = {},
+    craftSpecs = {},
+    scenario = {},
+    gwpSet = GWP_SETS.AR5,
+    shorePowerBerths = HUENEME_SHORE_POWER_BERTHS,
+  } = {},
 ) {
+  const berthHasShorePower =
+    !!rebuilt.berthId &&
+    (shorePowerBerths.includes(rebuilt.berthId) ||
+      (scenario.addShorePowerBerths ?? []).includes(rebuilt.berthId));
+  const shorePowerApplied = !!scenario.shorePower && berthHasShorePower;
   const { startMs, endMs } = rebuilt.window;
   const clipped = {
     ...call,
@@ -117,7 +132,7 @@ export function callEmissions(
     intervalEmissions(vessel, {
       ...iv,
       fuelSulfur: CA_OGV_FUEL_SULFUR,
-      onShorePower: !!scenario.shorePower && iv.mode === 'hotelling',
+      onShorePower: shorePowerApplied && iv.mode === 'hotelling',
     }),
   );
   const ship = summarize(shipResults, gwpSet);
@@ -156,6 +171,7 @@ export function callEmissions(
         ? (endMs - startMs) / HOUR_MS
         : null,
     scenario,
+    shorePowerApplied,
     ship,
     craft,
     craftTonnes,

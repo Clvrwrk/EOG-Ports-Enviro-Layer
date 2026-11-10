@@ -132,7 +132,7 @@ for (const [mmsi, recs] of byVessel) {
       );
     for (const f of rebuilt.flags) console.log(`  flag: ${f}`);
     console.log(
-      `  CO2e t: baseline ${h(base.total.co2e)} (ship ${h(base.ship.tonnes.co2e)}, craft ${h(base.craftTonnes.co2)}) → shore power + e-tugs ${h(scen.total.co2e)}; NOx t ${h(base.total.nox)} → ${h(scen.total.nox)}`,
+      `  CO2e t: baseline ${h(base.total.co2e)} (ship ${h(base.ship.tonnes.co2e)}, craft ${h(base.craftTonnes.co2)}) → ${scen.shorePowerApplied ? 'shore power + ' : ''}e-tugs ${h(scen.total.co2e)}; NOx t ${h(base.total.nox)} → ${h(scen.total.nox)}`,
     );
     out.push({
       mmsi,

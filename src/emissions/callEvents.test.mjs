@@ -207,4 +207,34 @@ test('berth use notes cover berths 1-9 and mark the Navy berths', () => {
   assert.equal(HUENEME_BERTH_USE['berth-4'].mainUse, 'ro-ro');
   assert.equal(HUENEME_BERTH_USE['berth-5'].operator, 'shared');
   assert.equal(HUENEME_BERTH_USE['berth-7'].operator, 'navy');
+  assert.equal(HUENEME_BERTH_USE['berth-1'].shorePower, true);
+  assert.equal(HUENEME_BERTH_USE['berth-3'].shorePower, false);
+});
+
+test('shore power only applies at a berth that has it', () => {
+  const [call] = splitCalls(ship, PORT_OF_HUENEME).filter(
+    (c) => c.kind === 'port-call',
+  );
+  const rebuilt = reconstructCall(call, [], {
+    berthPoints: HUENEME_BERTH_POINTS,
+    shipLengthM: 180,
+  });
+  const vessel = { shipType: 'Reefer', subtype: 'All Reefer', keelYear: 2010 };
+  const on = { vessel, scenario: { shorePower: true } };
+  assert.equal(callEmissions(call, rebuilt, on).shorePowerApplied, true);
+  for (const berthId of ['berth-4', null]) {
+    const elsewhere = { ...rebuilt, berthId };
+    const r = callEmissions(call, elsewhere, on);
+    assert.equal(r.shorePowerApplied, false);
+    assert.equal(r.gridKwh, 0);
+  }
+  const added = callEmissions(
+    call,
+    { ...rebuilt, berthId: 'berth-4' },
+    {
+      vessel,
+      scenario: { shorePower: true, addShorePowerBerths: ['berth-4'] },
+    },
+  );
+  assert.equal(added.shorePowerApplied, true);
 });

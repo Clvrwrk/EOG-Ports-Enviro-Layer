@@ -17,20 +17,61 @@ export const HUENEME_BERTH_POINTS = Object.freeze(
 /**
  * How each berth is used, from Port of Hueneme staff (via Chris, 2026-11-10).
  * operator: 'poh' | 'shared' (US Navy and POH) | 'navy'. Navy-only berths are
- * outside the port's own call inventory.
+ * outside the port's own call inventory. Only berths 1 and 2 have shore
+ * power today (Chris, 2026-11-10); adding it elsewhere is a scenario choice.
  */
 export const HUENEME_BERTH_USE = Object.freeze({
-  'berth-1': Object.freeze({ operator: 'poh', mainUse: null }),
-  'berth-2': Object.freeze({ operator: 'poh', mainUse: null }),
+  'berth-1': Object.freeze({
+    shorePower: true,
+    operator: 'poh',
+    mainUse: null,
+  }),
+  'berth-2': Object.freeze({
+    shorePower: true,
+    operator: 'poh',
+    mainUse: null,
+  }),
   'berth-3': Object.freeze({
+    shorePower: false,
     operator: 'poh',
     mainUse: null,
     note: 'not used very often',
   }),
-  'berth-4': Object.freeze({ operator: 'poh', mainUse: 'ro-ro' }),
-  'berth-5': Object.freeze({ operator: 'shared', mainUse: null }),
-  'berth-6': Object.freeze({ operator: 'shared', mainUse: null }),
-  'berth-7': Object.freeze({ operator: 'navy', mainUse: null }),
-  'berth-8': Object.freeze({ operator: 'navy', mainUse: null }),
-  'berth-9': Object.freeze({ operator: 'navy', mainUse: null }),
+  'berth-4': Object.freeze({
+    shorePower: false,
+    operator: 'poh',
+    mainUse: 'ro-ro',
+  }),
+  'berth-5': Object.freeze({
+    shorePower: false,
+    operator: 'shared',
+    mainUse: null,
+  }),
+  'berth-6': Object.freeze({
+    shorePower: false,
+    operator: 'shared',
+    mainUse: null,
+  }),
+  'berth-7': Object.freeze({
+    shorePower: false,
+    operator: 'navy',
+    mainUse: null,
+  }),
+  'berth-8': Object.freeze({
+    shorePower: false,
+    operator: 'navy',
+    mainUse: null,
+  }),
+  'berth-9': Object.freeze({
+    shorePower: false,
+    operator: 'navy',
+    mainUse: null,
+  }),
 });
+
+/** Berths with shore power in the baseline. */
+export const HUENEME_SHORE_POWER_BERTHS = Object.freeze(
+  Object.entries(HUENEME_BERTH_USE)
+    .filter(([, b]) => b.shorePower)
+    .map(([id]) => id),
+);
