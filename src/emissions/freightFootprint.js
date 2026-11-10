@@ -26,8 +26,8 @@ import {
 } from './freightLanes.js';
 import { GWP_SETS, intervalEmissions, summarize } from './ogvMethod.js';
 import { DEFAULT_FUEL_SULFUR } from './ogvFactors.js';
+import { EARTH_RADIUS_KM, greatCircleKm } from '../geoDistance.js';
 
-const EARTH_RADIUS_KM = 6371.0088;
 const KM_PER_NM = 1.852;
 const KM_PER_MILE = 1.609344;
 const LEGS = Object.freeze(['ocean', 'port', 'drayage', 'onward']);
@@ -35,28 +35,21 @@ const LEGS = Object.freeze(['ocean', 'port', 'drayage', 'onward']);
 const toRad = (d) => (d * Math.PI) / 180;
 const toDeg = (r) => (r * 180) / Math.PI;
 
-/** Great-circle distance in km between [lat, lon] points. */
-export function greatCircleKm([lat1, lon1], [lat2, lon2]) {
-  const p1 = toRad(lat1);
-  const p2 = toRad(lat2);
-  const dp = p2 - p1;
-  const dl = toRad(lon2 - lon1);
-  const a =
-    Math.sin(dp / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) ** 2;
-  return 2 * EARTH_RADIUS_KM * Math.asin(Math.min(1, Math.sqrt(a)));
-}
+/** Great-circle distance in km between [lat, lon] points (src/geoDistance.js). */
+export const pairKm = ([lat1, lon1], [lat2, lon2]) =>
+  greatCircleKm({ lat: lat1, lon: lon1 }, { lat: lat2, lon: lon2 });
 
 /** Sum of great-circle legs along a path of [lat, lon] points, in km. */
 export function pathKm(points) {
   let km = 0;
   for (let i = 1; i < points.length; i += 1)
-    km += greatCircleKm(points[i - 1], points[i]);
+    km += pairKm(points[i - 1], points[i]);
   return km;
 }
 
 /** Points along the great circle from a to b, about every `stepKm`. */
 export function greatCirclePoints(a, b, stepKm = 250) {
-  const d = greatCircleKm(a, b) / EARTH_RADIUS_KM;
+  const d = pairKm(a, b) / EARTH_RADIUS_KM;
   const n = Math.max(1, Math.ceil((d * EARTH_RADIUS_KM) / stepKm));
   if (d === 0) return [a, b];
   const [la1, lo1] = [toRad(a[0]), toRad(a[1])];
@@ -289,7 +282,7 @@ const share = (weights) => {
 
 const at = (p) => [p.lat, p.lon];
 const roadMiles = (a, b, circuity) =>
-  (greatCircleKm(at(a), at(b)) * circuity) / KM_PER_MILE;
+  (pairKm(at(a), at(b)) * circuity) / KM_PER_MILE;
 
 /** Published tonnes for a commodity (autos: units x tonnes per unit). */
 export const commodityTonnes = (c) => c.tonnes ?? c.units * c.tonnesPerUnit;

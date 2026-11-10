@@ -4,7 +4,7 @@ import test from 'node:test';
 import {
   commodityTonnes,
   freightFootprint,
-  greatCircleKm,
+  pairKm,
   oceanIntensity,
   pathKm,
   portCallIntensity,
@@ -30,7 +30,7 @@ const close = (actual, expected, tol) =>
 
 test('great-circle distance matches a known pair', () => {
   // Los Angeles to New York is about 3,936 km.
-  close(greatCircleKm([33.94, -118.41], [40.64, -73.78]), 3974, 40);
+  close(pairKm([33.94, -118.41], [40.64, -73.78]), 3974, 40);
 });
 
 test('sea routes reach Hueneme at believable distances', () => {
