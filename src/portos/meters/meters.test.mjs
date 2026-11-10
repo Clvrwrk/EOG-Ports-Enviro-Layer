@@ -95,7 +95,7 @@ test('rate schedules map to the tariffs the app can bill', () => {
 });
 
 test('scenario loads land on the meters that carry them', () => {
-  const run = runScenario({ shorePower: true });
+  const run = runScenario({ year: 2028, shorePower: true });
   const loads = scenarioLoads(run, specs);
   const { byMeter, unassigned } = allocateScenario(run, SAMPLE_REGISTRY, specs);
   assert.deepEqual(unassigned, []);
@@ -114,7 +114,7 @@ test('scenario loads land on the meters that carry them', () => {
 });
 
 test('a load with no meter is reported, and overloads show on the card', () => {
-  const run = runScenario({ shorePower: true });
+  const run = runScenario({ year: 2028, shorePower: true });
   const small = normalizeRegistry({
     meters: [
       meter({
@@ -162,7 +162,7 @@ test('the loader falls back to the sample registry', async () => {
 
 test('the day profile stacks scenario loads on billed averages', async () => {
   const { billedMonthKwh, dayProfile } = await import('./profile.js');
-  const run = runScenario({ shorePower: true });
+  const run = runScenario({ year: 2028, shorePower: true });
   const allocation = allocateScenario(run, SAMPLE_REGISTRY, specs);
   const reefers = SAMPLE_REGISTRY.meters.find((m) => m.id === 'sample-reefers');
   assert.equal(billedMonthKwh(reefers, 1), 180000);
