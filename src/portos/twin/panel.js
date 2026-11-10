@@ -27,6 +27,7 @@ export const TWIN_LAYERS = Object.freeze([
   { id: 'grid', label: 'Utility lines and power flow', on: true },
   { id: 'meters', label: 'Electricity meters', on: true },
   { id: 'plugs', label: 'Reefer plugs', on: true },
+  { id: 'assets', label: 'Port assets (buildings, rail, tugs)', on: true },
   { id: 'graph', label: 'Usage graph', on: true },
   { id: 'map', label: 'Map image', on: true },
 ]);
