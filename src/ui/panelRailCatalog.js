@@ -18,6 +18,7 @@ export const PANEL_RAIL_ITEMS = Object.freeze({
     shownBy: 'active',
   },
   'utilities-panel': { icon: 'handyman', label: msg('UTILITIES') },
+  'poh-twin-panel': { icon: 'anchor', label: msg('POH TWIN') },
   'scene-panel': { icon: 'movie', label: msg('AUTHORING') },
   'pp-toggles': { icon: 'tune', label: msg('DISPLAY') },
   'cctv-panel': { icon: 'videocam', label: msg('CCTV') },

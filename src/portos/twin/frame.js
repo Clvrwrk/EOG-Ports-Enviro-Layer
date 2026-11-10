@@ -8,9 +8,11 @@
  * Pure: no Cesium, no DOM.
  */
 import { STAX, berthStateAt } from '../atBerth.js';
+import { RATE_SHEETS, rateSheetInput } from '../demandDriver.js';
 import { DEFAULT_SCENARIO } from '../scenario.js';
 import { FACTORS, SPECS } from '../hueneme.js';
 import { STEPS_PER_HOUR } from '../touCalendar.js';
+import { vesselLine, vesselsAtBerth } from '../vessels/registry.js';
 
 const DT = 1 / STEPS_PER_HOUR;
 const REEFER_BERTHS = new Set(['berth-1', 'berth-2']);
@@ -26,6 +28,7 @@ export const DEFAULT_DECISIONS = Object.freeze({
   battery: 'none', // 'none' | '1mwh'
   shorePower: false,
   stax: true,
+  rate: 'tou8', // key of RATE_SHEETS
 });
 
 const BATTERY_1MWH = Object.freeze({
@@ -62,7 +65,19 @@ export function applyDecisions(scenario, patch = {}) {
     };
   if (patch.battery === 'none') next.battery = null;
   if (patch.battery === '1mwh') next.battery = { ...BATTERY_1MWH };
+  if (patch.rate in RATE_SHEETS)
+    Object.assign(next, rateSheetInput(patch.rate));
   return next;
+}
+
+/** The rate sheet a scenario is billed on, or 'custom' if it is not listed. */
+function rateSheetKey(scenario) {
+  const match = Object.entries(RATE_SHEETS).find(
+    ([, sheet]) =>
+      sheet.tariffId === scenario.tariffId &&
+      sheet.includeDeferredDemand === Boolean(scenario.includeDeferredDemand),
+  );
+  return match ? match[0] : 'custom';
 }
 
 /** Scenario input for a set of panel decisions. */
@@ -97,6 +112,7 @@ export function decisionsFromScenario(scenario) {
         : 'custom',
     shorePower: Boolean(scenario.shorePower),
     stax: scenario.stax !== false,
+    rate: rateSheetKey(scenario),
   };
 }
 
@@ -328,8 +344,11 @@ function atBerthRows(frame, result) {
   return rows;
 }
 
-/** Data card for the ship at the berth. */
-export function shipCard(frame, result) {
+/**
+ * Data card for the ship at the berth. With a ship inventory that carries
+ * call history, it also lists the real ships that most often used the berth.
+ */
+export function shipCard(frame, result, inventory = null) {
   const call = frame.ship;
   if (!call) return { title: 'No ship at the berth', rows: [] };
   const when = (step) => {
@@ -355,8 +374,25 @@ export function shipCard(frame, result) {
       ],
       ...atBerthRows(frame, result),
       ['Schedule', 'Synthetic, from the workbook call profile'],
+      ...berthRegulars(call, inventory),
     ],
   };
+}
+
+function berthRegulars(call, inventory) {
+  const ships = vesselsAtBerth(inventory, call.berthId, {
+    cargoClass: 'reefer',
+    limit: 3,
+  });
+  if (!ships.length) return [];
+  return [
+    [
+      'Ships that call here',
+      ships
+        .map((v) => `${vesselLine(v)} · ${v.calls.berths[call.berthId]} calls`)
+        .join('; '),
+    ],
+  ];
 }
 
 /** Data card for the STAX barge alongside the ship. */

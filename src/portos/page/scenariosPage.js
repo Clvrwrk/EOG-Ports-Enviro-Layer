@@ -39,6 +39,7 @@ import {
   uniqueName,
   writeLibrary,
 } from '../scenarioStore.js';
+import { followNavRequest, mountSiteNav } from '../nav/siteNav.js';
 import { TARIFFS } from '../tariffs.js';
 import { STEPS_PER_DAY } from '../touCalendar.js';
 
@@ -241,6 +242,8 @@ app.innerHTML = `
     </div>
   </div>
 </div>`;
+mountSiteNav({ host: app.querySelector('.portos-wrap') });
+followNavRequest();
 
 const $ = (id) => document.getElementById(id);
 const storage = (() => {
@@ -657,7 +660,7 @@ function renderNotes() {
     `Rate: ${tariff.name}. ${tariff.status}. Source: ${tariff.source}.`,
     'Winter super-off-peak is modeled as 8 a.m. to 4 p.m.; the start hour still needs confirming in the SCE tariff book.',
     'Equipment specs, crew templates, fleet plan and capex come from the POH Utilization Model (V23MFE), except the harbor cranes.',
-    'The port has four Liebherr mobile harbor cranes. Each draws 322.5 kWh per working hour: the LHM 420 Litronic 750 kW rating times a 0.43 crane load factor. Plug-in hybrids draw from the meter while working. The 2023 inventory has three plug-in hybrids and one diesel crane; the fleet plan replaces the diesel crane in 2024.',
+    'The port has four Liebherr mobile harbor cranes. Each draws 322.5 kWh per working hour: the LHM 420 Litronic 750 kW rating times a 0.43 crane load factor. All four plug into utility shore power at the berth to work, the same kind of service the ships plug into, so they draw from the meter rather than burn diesel.',
     'Light-duty vehicles and Class IV forklifts are not in the fleet plan, so they default to diesel units sized to demand until you set a count.',
     'ZE equipment cost in the comparison is the electric units beyond the 2023 fleet at workbook unit costs (capital less CORE voucher, plus charging infrastructure). The site battery has no cost in the workbook and is not priced.',
     `Ships at berth: hotel loads are EPA port-inventory defaults by vessel type (reefer 1,080 kW, RoRo 1,200 kW, tanker 625 kW auxiliary engines plus boilers), Tier I auxiliary engines on 0.1% sulfur distillate. Shore power and STAX cover the auxiliary engines, not boilers, and only between hook-up (2 h after arrival) and release (1 h before sailing).`,

@@ -51,6 +51,14 @@ async function importChosen(event) {
     <div class="utilities-tools"><DrawControls /><GeoImport /></div>
   </RailPanel>
 
+  <!-- POH Twin: the port twin mounts its controls in the host while the
+       port layer is on (src/portos/twin/panel.js). -->
+  <RailPanel id="poh-twin-panel" start-collapsed :title="t('POH TWIN')" :hint="t('Port of Hueneme scenario twin')" scroll>
+    <div id="poh-twin-host" class="poh-twin-host">
+      <p class="poh-twin-empty">{{ t('The twin runs on the Port of Hueneme page.') }} <a href="/ports/california/port-of-hueneme">{{ t('Open it') }}</a></p>
+    </div>
+  </RailPanel>
+
   <!-- CCTV Coverage Panel -->
   <CctvPanel />
 
