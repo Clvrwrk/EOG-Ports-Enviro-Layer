@@ -9,6 +9,7 @@
  * opened or its switch is turned on, and is removed when it is turned off.
  */
 import * as Cesium from 'cesium';
+import { fetchAdminRegistry } from '../admin/registrySource.js';
 import { demandDriver } from '../demandDriver.js';
 import { HUENEME_REGISTRY } from '../hueneme.js';
 import { allocateScenario, meterScenarioAt } from '../meters/allocate.js';
@@ -106,6 +107,8 @@ export function createPortTwin({
   let library = { items: [], baselineId: null };
   let linked = null; // scenario that arrived in the page link
   let baseline = null;
+  // Run options: { registry } once a signed-in admin registry arrives.
+  let runContext = {};
   let result = null;
   let driver = null;
   let step = 0;
@@ -130,7 +133,7 @@ export function createPortTwin({
   /** Send the scenario's loads to their meters and flag overloaded ones. */
   function allocate() {
     if (!meters || !result) return;
-    allocation = allocateScenario(result, meters, HUENEME_REGISTRY.specs);
+    allocation = allocateScenario(result, meters, specs());
     const over = new Set();
     for (const [id, entry] of allocation.byMeter)
       if (entry.headroomKw != null && entry.headroomKw < 0) over.add(id);
@@ -317,11 +320,12 @@ export function createPortTwin({
   }
 
   function run() {
-    result = runScenario(scenario);
-    if (!baseline) baseline = runScenario(baselineScenario(library));
+    result = runScenario(scenario, runContext);
+    if (!baseline)
+      baseline = runScenario(baselineScenario(library), runContext);
     step = Math.min(step, result.siteKw.length - 1);
     stepFloat = Math.min(stepFloat, result.siteKw.length - 1);
-    driver = demandDriver(result, HUENEME_REGISTRY.specs);
+    driver = demandDriver(result, specs());
     allocate();
     showScenario();
     panel.showScoreboard(scoreboard(result, baseline));
@@ -407,6 +411,11 @@ export function createPortTwin({
     requestRender('port-twin-layer');
   }
 
+  /** Energy specs of the registry the twin is running on. */
+  function specs() {
+    return runContext.registry?.specs ?? HUENEME_REGISTRY.specs;
+  }
+
   function activate() {
     if (active || !viewer) return;
     active = true;
@@ -418,9 +427,9 @@ export function createPortTwin({
     mapSwitch = createMapSwitch(viewer);
     if (!layers.map) mapSwitch.set(false);
     library = readLibrary(browserStorage());
-    result = runScenario(scenario);
-    baseline ??= runScenario(baselineScenario(library));
-    driver = demandDriver(result, HUENEME_REGISTRY.specs);
+    result = runScenario(scenario, runContext);
+    baseline ??= runScenario(baselineScenario(library), runContext);
+    driver = demandDriver(result, specs());
     showScenario();
     // Open an hour into the first reefer call of the year.
     step = nextCallStart(result, -1, 1) + STEPS_PER_HOUR;
@@ -450,6 +459,15 @@ export function createPortTwin({
       allocate();
       render('port-twin-meters');
     });
+    // Staff signed in to /admin see the twin run on the registry they
+    // edited; everyone else keeps the built-in seed.
+    if (!runContext.registry)
+      fetchAdminRegistry().then((registry) => {
+        if (!stillMine() || !registry) return;
+        runContext = { registry };
+        baseline = null;
+        run();
+      });
     Promise.resolve(loadSiteMap()).then((site) => {
       if (!stillMine() || !site) return;
       siteView = createSiteView(dataSource, site);

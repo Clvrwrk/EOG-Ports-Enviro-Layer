@@ -38,6 +38,10 @@ import {
 } from '../scenarioStore.js';
 import { followNavRequest, mountSiteNav } from '../nav/siteNav.js';
 import { TARIFFS } from '../tariffs.js';
+import {
+  fetchAdminRegistry,
+  fleetFromRegistry,
+} from '../admin/registrySource.js';
 import { STEPS_PER_DAY } from '../touCalendar.js';
 
 const MAX_COMPARED = 4;
@@ -118,6 +122,12 @@ app.innerHTML = `
       <button type="button" id="csvBills">Monthly bills CSV</button>
       <button type="button" id="csvLoad">15-minute load CSV</button>
       <span class="status" id="status" role="status"></span>
+    </div>
+    <div class="bar-row" id="registryRow" hidden>
+      <label class="inline"><input type="checkbox" id="useAdmin" checked /> Run on the admin registry</label>
+      <span class="hint" id="registryNote"></span>
+      <button type="button" id="fleetFromRegistry">Set equipment from registry</button>
+      <a href="/admin">Edit assets</a>
     </div>
   </section>
   <div class="portos-layout">
@@ -285,11 +295,16 @@ $('shoreTypes').innerHTML = CALL_TYPES.map(
 // ---- runs, cached so comparing does not re-run unchanged scenarios ---------
 
 const cache = new Map();
+// The registry staff edited in /admin, when they are signed in here.
+const registrySource = { admin: null, use: true };
+const activeRegistry = () =>
+  registrySource.use && registrySource.admin ? registrySource.admin : undefined;
 function runCached(scenario) {
-  const key = encodeScenario({ ...scenario, name: '' });
+  const registry = activeRegistry();
+  const key = `${registry ? 'admin' : 'seed'}:${encodeScenario({ ...scenario, name: '' })}`;
   let hit = cache.get(key);
   if (!hit) {
-    hit = runScenario(scenario);
+    hit = runScenario(scenario, registry ? { registry } : {});
     cache.set(key, hit);
     if (cache.size > 12) cache.delete(cache.keys().next().value);
   }
@@ -647,7 +662,11 @@ function renderRollup() {
 function renderNotes() {
   const tariff = result.tariff;
   const delivered = result.delivered;
+  const registry = activeRegistry();
   const notes = [
+    registry
+      ? `Assets come from the admin registry (${registry.assets.length} assets), not the built-in seed.`
+      : 'Assets come from the built-in Hueneme seed registry.',
     ...(delivered
       ? [
           `Delivered energy covers ${num(delivered.sharePct)}% of yearly load (${DELIVERED_PROFILES[delivered.profile].toLowerCase()}) at $${delivered.pricePerKwh}/kWh. It never exports: ${num(delivered.curtailedKwh / 1000)} MWh a year would arrive when the port does not need it and is curtailed.`,
@@ -954,6 +973,33 @@ mountInterview({
     );
   },
 });
+$('useAdmin').addEventListener('change', () => {
+  registrySource.use = $('useAdmin').checked;
+  say(
+    registrySource.use
+      ? 'Running on the admin registry.'
+      : 'Running on the built-in Hueneme seed registry.',
+  );
+  run();
+});
+$('fleetFromRegistry').addEventListener('click', () => {
+  if (!registrySource.admin) return;
+  draft = { ...draft, fleet: fleetFromRegistry(registrySource.admin) };
+  say(
+    'Equipment counts set from the active units in the admin registry.',
+    'ok',
+  );
+  run();
+});
 
 clearBatteryBoxes();
 run();
+fetchAdminRegistry().then((registry) => {
+  if (!registry) return;
+  registrySource.admin = registry;
+  $('registryNote').textContent =
+    `${registry.assets.length} assets, signed in as ${registry.signedInAs}.`;
+  $('registryRow').hidden = false;
+  cache.clear();
+  run();
+});

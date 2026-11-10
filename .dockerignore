@@ -11,6 +11,8 @@ pinokio/ENVIRONMENT
 pinokio/.installed
 .gev-cache
 .gev-logs
+# Admin portal database: staff records, never baked into an image.
+.gev-data
 qa-artifacts
 qa-shots
 screenshots
