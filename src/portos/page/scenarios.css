@@ -443,3 +443,8 @@ body {
   flex-wrap: wrap;
   margin: 12px 0 4px;
 }
+.bar-row label.inline {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}

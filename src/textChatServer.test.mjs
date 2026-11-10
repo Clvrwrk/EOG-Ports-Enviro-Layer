@@ -697,3 +697,14 @@ test('OpenAI empty tool arrays are removed before history is returned', async (t
   const body = await (await f.send()).json();
   assert.equal(body.content.tool_calls, undefined);
 });
+
+test('every offered tool description fits OpenAI chat limit of 1024 characters', () => {
+  // Chat Completions rejects a function description over 1024 characters
+  // with a 400, which the chat route reports as "Could not connect".
+  for (const tool of GEV_REALTIME_TOOLS) {
+    assert.ok(
+      String(tool.description || '').length <= 1024,
+      `${tool.name} description is ${String(tool.description || '').length} characters`,
+    );
+  }
+});

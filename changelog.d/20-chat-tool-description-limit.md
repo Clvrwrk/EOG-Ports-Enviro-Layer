@@ -1,0 +1,1 @@
+- Fix typed AI chat failing with "Could not connect": the analyst_query tool description was over OpenAI's 1,024-character limit, so every chat request was rejected. A test now keeps every tool description under the limit.
