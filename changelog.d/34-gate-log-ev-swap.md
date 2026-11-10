@@ -6,4 +6,4 @@
   standard, then models adding N electric trucks doing N trips a day that
   replace the oldest diesels first. Gate data stays in the browser. The
   asset registry gains drayage carrier and off-port charging site types
-  (Claude, #PR).
+  (Claude, #34).
