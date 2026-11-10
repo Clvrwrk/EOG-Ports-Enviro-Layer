@@ -16,6 +16,7 @@
   ["local-datacenters", "d"],
   ["local-firms", "w"],
   ["military", "m"],
+  ["freight-footprint", "01"],
   ["military-awareness", "g"],
   ["military-installations", "i"],
   ["port-emissions", "00"],

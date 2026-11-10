@@ -33,6 +33,7 @@ import { createApplicationDroneAirspace } from './layers/droneAirspace.js';
 import { createApplicationWildlifeSightings } from './layers/wildlifeSightings.js';
 import { createApplicationCables } from './layers/submarineCables.js';
 import { createApplicationPortEmissions } from './layers/portEmissions.js';
+import { createApplicationFreightFootprint } from './layers/freightFootprint.js';
 import { createOsmOverlayLayers } from '../data/osmOverlays.js';
 import { createApplicationStreetLevel } from './layers/streetLevel.js';
 import { createInfrastructureLayers } from '../data/infrastructure.js';
@@ -161,6 +162,7 @@ export function createApplicationCatalog({
         createApplicationOsmPlaces(),
         vessels,
         createApplicationPortEmissions({ vessels }),
+        createApplicationFreightFootprint(),
         installations,
         createApplicationAwareness({
           flights,
