@@ -184,9 +184,7 @@ function energyText(model) {
   if (kwh) parts.push(`${fmt(kwh, kwh < 10 ? 2 : 1)} kWh`);
   if (dieselGal)
     parts.push(`${fmt(dieselGal, dieselGal < 1 ? 3 : 2)} gal diesel`);
-  return parts.length
-    ? `${parts.join(' + ')} per ${basisLabel(model)}`
-    : '-';
+  return parts.length ? `${parts.join(' + ')} per ${basisLabel(model)}` : '-';
 }
 
 function emissionsText(model) {
