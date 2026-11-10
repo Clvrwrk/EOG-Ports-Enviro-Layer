@@ -1,6 +1,10 @@
 import { readRequestBody } from '../common/request.js';
 import { admitSameSiteRequest } from '../../../src/localRequestGate.mjs';
 import {
+  forwardedProtocol,
+  trustedProxyEnabled,
+} from '../common/trusted-proxy.js';
+import {
   isAllowedHost,
   resolveAllowedHosts,
 } from '../../../build/allowedHosts.js';
@@ -21,14 +25,20 @@ export function isGeminiRequestOriginAllowed(
     /[\s/?#@\\]/.test(host)
   )
     return false;
-  const protocol = req.socket?.encrypted ? 'https:' : 'http:';
+  // GEV_TRUST_PROXY: see server/providers/common/trusted-proxy.js.
+  const trusted = trustedProxyEnabled();
+  const protocol = trusted
+    ? forwardedProtocol(req)
+    : req.socket?.encrypted
+      ? 'https:'
+      : 'http:';
   if (
     !admitSameSiteRequest({
       hostHeader: host,
       protocol,
       origin,
       secFetchSite: req.headers?.['sec-fetch-site'],
-      proxyHeaders: req.headers || {},
+      proxyHeaders: trusted ? {} : req.headers || {},
     }).ok
   )
     return false;
