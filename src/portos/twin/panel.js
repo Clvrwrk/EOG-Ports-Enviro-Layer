@@ -34,6 +34,7 @@ export const TWIN_LAYERS = Object.freeze([
   { id: 'meters', label: 'Electricity meters', on: true },
   { id: 'plugs', label: 'Reefer plugs', on: true },
   { id: 'assets', label: 'Port assets (buildings, rail, tugs)', on: true },
+  { id: 'zones', label: 'Yard zones', on: true },
   { id: 'graph', label: 'Usage graph', on: true },
   { id: 'map', label: 'Map image', on: true },
 ]);
@@ -230,6 +231,8 @@ export function createTwinPanel(
   const layerBoxes = new Map();
   // The EV Planning section (fleet/twinSection.js) mounts here.
   const evHost = el('div', { class: 'ev-host' });
+  // The yard zones and moves section (yard/section.js) mounts here.
+  const yardHost = el('div', { class: 'yard-host' });
   const layerBox = el(
     'fieldset',
     { class: 'layers' },
@@ -551,6 +554,7 @@ export function createTwinPanel(
     ),
     el('label', {}, 'Rate sheet', controls.rate),
     evHost,
+    yardHost,
     el('fieldset', {}, boardTitle, board),
     driverBox,
     layerBox,
@@ -602,6 +606,8 @@ export function createTwinPanel(
   return {
     /** Where the EV Planning section mounts. */
     evHost,
+    /** Where the yard zones and moves section mounts. */
+    yardHost,
     /** Whether the menu panel holding the controls is open (true if none). */
     isOpen,
     /** Show the controls for a running twin, or just the on switch. */

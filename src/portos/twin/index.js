@@ -73,6 +73,9 @@ import { TWIN_ENTITY_PREFIX, createTwinView } from './view.js';
 import { loadVesselInventory } from '../vessels/load.js';
 import { createEvPlanningSection } from '../fleet/twinSection.js';
 import { EV_ENTITY_PREFIX } from '../fleet/view.js';
+import { yardModel, zoneCard } from '../yard/model.js';
+import { createYardSection } from '../yard/section.js';
+import { YARD_ENTITY_PREFIX, createYardView } from '../yard/view.js';
 
 /** Simulated hours per real second while playing. */
 const PLAY_HOURS_PER_SECOND = 1;
@@ -87,6 +90,7 @@ const OWN_PREFIXES = [
   SITE_ENTITY_PREFIX,
   ASSET_ENTITY_PREFIX,
   EV_ENTITY_PREFIX,
+  YARD_ENTITY_PREFIX,
 ];
 const PLAN_ID = 'plan';
 const LINK_ID = 'link';
@@ -151,6 +155,9 @@ export function createPortTwin({
   let assets = null; // port asset registry, once loaded
   let evSection = null; // EV Planning section, while the twin runs
   let assetView = null;
+  let yard = null; // yard zones and moves for the scenario playing
+  let yardView = null;
+  let yardSection = null;
   let mapSwitch = null;
   let usage = null;
   let runCount = 0;
@@ -228,6 +235,13 @@ export function createPortTwin({
       return network ? networkCard(network, flows, meters, target) : null;
     if (target.kind === 'asset') return assetCard(target.asset, assets);
     if (target.kind === 'structure') return structureCard(target.item);
+    if (target.kind === 'zone')
+      return yard
+        ? zoneCard(
+            yard.zones.find((z) => z.id === target.zoneId),
+            yard,
+          )
+        : null;
     if (target.kind === 'ship') return shipCard(frame, result, vessels);
     if (target.kind === 'stax') return staxCard(frame, result);
     if (target.kind === 'charger')
@@ -279,6 +293,9 @@ export function createPortTwin({
     if (layers.assets)
       for (const item of assetView?.labels() ?? [])
         entries.push(name(`asset:${item.id}`, item, '#ffd166', 60));
+    if (layers.zones)
+      for (const item of yardView?.labels() ?? [])
+        entries.push(name(`zone:${item.id}`, item, '#3a86ff', 50));
     if (layers.meters)
       for (const item of meterView?.labels() ?? [])
         entries.push(name(`meter:${item.id}`, item, '#ffd166', 100));
@@ -350,6 +367,30 @@ export function createPortTwin({
     });
   }
 
+  /** Price the yard's moves on the scenario playing. */
+  function refreshYard() {
+    if (!yardView) return;
+    yard = yardModel(result, { specs: specs() });
+    yardView.update(yard);
+    yardSection?.show(yard);
+  }
+
+  /** Pick a zone from the map or the panel: outline it and open its card. */
+  function pickZone(zoneId, at = null) {
+    yardView?.pick(zoneId);
+    yardSection?.pickZone(zoneId);
+    if (!zoneId) {
+      if (selected?.target.kind === 'zone') {
+        selected = null;
+        panel.showCard(null);
+      }
+    } else if (at) {
+      selected = { target: { kind: 'zone', zoneId }, x: at.x, y: at.y };
+      panel.showCard(cardFor(selected.target), at.x, at.y);
+    }
+    requestRender('port-yard-pick');
+  }
+
   function run() {
     result = runScenario(scenario, runContext);
     if (!baseline)
@@ -358,6 +399,7 @@ export function createPortTwin({
     stepFloat = Math.min(stepFloat, result.siteKw.length - 1);
     driver = demandDriver(result, specs());
     allocate();
+    refreshYard();
     showScenario();
     panel.showScoreboard(scoreboard(result, baseline));
     panel.showDriver(driver);
@@ -403,6 +445,8 @@ export function createPortTwin({
     if (grid) return grid;
     const unit = view.identify(entityId);
     if (unit) return unit;
+    const zoneId = yardView?.identify(entityId);
+    if (zoneId) return { kind: 'zone', zoneId };
     const asset = assetView?.identify(entityId);
     if (asset) return { kind: 'asset', asset };
     const item = siteView?.identify(entityId);
@@ -534,6 +578,10 @@ export function createPortTwin({
     const picked = viewer.scene.pick(movement.position);
     const target = identify(picked?.id?.id);
     if (!target) return;
+    if (target.kind === 'zone') {
+      yardView.pick(target.zoneId);
+      yardSection?.pickZone(target.zoneId);
+    }
     selected = { target, x: movement.position.x, y: movement.position.y };
     const rect = viewer.canvas.getBoundingClientRect();
     selected.x += rect.left;
@@ -556,6 +604,10 @@ export function createPortTwin({
     if (id === 'structures' || id === 'roads') siteView?.setVisible(id, on);
     if (id === 'assets') {
       assetView?.setVisible(on);
+      publishNames();
+    }
+    if (id === 'zones') {
+      yardView?.setVisible(on);
       publishNames();
     }
     if (id === 'grid') gridView?.setLinesVisible(on);
@@ -588,6 +640,18 @@ export function createPortTwin({
     result = runScenario(scenario, runContext);
     baseline ??= runScenario(baselineScenario(library), runContext);
     driver = demandDriver(result, specs());
+    yard = yardModel(result, { specs: specs() });
+    yardView = createYardView(dataSource, yard);
+    yardView.setVisible(layers.zones);
+    yardSection = createYardSection({
+      host: panel.yardHost,
+      onMetric(metric) {
+        yardView?.setMetric(metric);
+        requestRender('port-yard-metric');
+      },
+      onZone: pickZone,
+    });
+    yardSection.show(yard);
     showScenario();
     // Open an hour into the first reefer call of the year.
     step = nextCallStart(result, -1, 1) + STEPS_PER_HOUR;
@@ -678,6 +742,10 @@ export function createPortTwin({
     editor = null;
     evSection?.destroy();
     evSection = null;
+    yardSection?.destroy();
+    yardSection = null;
+    yardView = null;
+    yard = null;
     usage?.destroy();
     usage = null;
     mapSwitch?.set(true);
@@ -801,5 +869,7 @@ export function createPortTwin({
     getNetwork: () => network,
     getGridPlan: () => grid?.plan ?? null,
     getDriver: () => driver,
+    /** Yard zones and moves for the scenario playing. */
+    getYard: () => yard,
   };
 }
