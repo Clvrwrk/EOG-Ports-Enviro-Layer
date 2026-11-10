@@ -151,6 +151,28 @@ across the antimeridian, so they cannot use the strict ±180 check as-is, and
 `src/sources/adsbRecords.js` and `server/providers/common/geo.js` keep their own
 implementations.
 
+## Scenario builder — November 9, 2026
+
+`/scenarios` is now a full scenario builder and the twin plays what it makes.
+`src/portos/scenarioStore.js` (pure, tested) owns the scenario as a thing to
+keep: `normalizeScenario` cleans and clamps anything from a link, file or
+storage; `encodeScenario`/`decodeScenario` pack the difference from the default
+into a `?scenario=` token; the library helpers keep named scenarios and one
+baseline in `localStorage` under `portos.scenarios.v1`; `compareRuns`,
+`zeroEmissionCapex` and `paybackYears` reduce runs to a comparison; `billsCsv`
+and `loadCsv` export a run. The page edits every engine input (units and
+chargers per equipment type, year, schedule seed, call volume, charging rule,
+reserve, charger efficiency, rate, building base load, shore power by vessel
+type, battery size, round trip and hold level), saves/duplicates/deletes
+scenarios, sets a baseline, compares the draft and up to four saved scenarios
+against it, and links to the port page with the scenario in the URL. The twin
+(`src/portos/twin/index.js`) reads that link and the same library: its panel
+has a scenario picker, its quick toggles patch the playing scenario
+(`applyDecisions`) instead of replacing it, and its scoreboard measures
+against the saved baseline. Scenarios live only in the browser; there is no
+server store yet. ZE equipment cost is electric units beyond the 2023 fleet at
+workbook unit costs; the site battery is unpriced.
+
 ## Port scenario twin — November 9, 2026
 
 The Port Emissions layer now mounts a 3D scenario twin of Hueneme's reefer
