@@ -33,6 +33,11 @@ RUN mkdir -p node_modules/.vite && chmod 777 node_modules node_modules/.vite
 
 COPY --chown=node:node . .
 
+# The admin portal's database (/admin). Created here, owned by `node`, so a
+# named volume mounted at this path starts out writable: Docker copies the
+# image directory's ownership into an empty named volume on first use.
+RUN mkdir -p /app/.gev-data/portos
+
 # Bind to all interfaces, otherwise the published port hits nothing. This does
 # not widen the Host allowlist: IP addresses and localhost are accepted, other
 # names only via GEV_ALLOWED_HOSTS (see build/allowedHosts.js).

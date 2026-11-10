@@ -5,6 +5,7 @@
 const RUNTIME_WRITE_GLOBS = Object.freeze([
   '**/.gev-cache/**',
   '**/.gev-logs/**',
+  '**/.gev-data/**',
 ]);
 
 /**

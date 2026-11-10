@@ -223,6 +223,7 @@ export function createBrowserViteConfig({
           '**/ENVIRONMENT',
           '**/.gev-logs/**',
           '**/.gev-cache/**',
+          '**/.gev-data/**',
           // Root-anchored: a bare '**/dist/**' would also deny every
           // dependency's own dist/ (e.g. node_modules/vite/dist/client),
           // breaking /@vite/client and other dev-client assets.
