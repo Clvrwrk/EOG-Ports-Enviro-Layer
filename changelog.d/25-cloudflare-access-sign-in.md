@@ -1,0 +1,1 @@
+- Staff sign in with Cloudflare Access (an emailed one-time code or link) instead of a password, and the whole site can be limited to staff email domains: the server checks the Access token on every request, so reaching the server directly is refused too. (#25)
