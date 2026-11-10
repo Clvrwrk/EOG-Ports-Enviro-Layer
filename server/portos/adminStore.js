@@ -72,9 +72,19 @@ export function cleanAsset(asset) {
  * @param {string} options.dir data directory, or ':memory:' for tests
  * @param {{ portId: string, specs: object, assets: object[] }} options.seed
  * @param {(registry: object) => string[]} options.validate
+ * @param {(asset: object) => object} [options.migrate] brings a record
+ *   saved under an older form up to the current one (migrateAsset). Run on
+ *   every stored row when the store opens (logged as a 'migrate' change by
+ *   'form update') and on every incoming asset.
  * @param {() => number} [options.now]
  */
-export function openAdminStore({ dir, seed, validate, now = Date.now }) {
+export function openAdminStore({
+  dir,
+  seed,
+  validate,
+  migrate = (asset) => asset,
+  now = Date.now,
+}) {
   const { DatabaseSync } = sqliteModule();
   let file = ':memory:';
   if (dir !== ':memory:') {
@@ -179,6 +189,27 @@ export function openAdminStore({ dir, seed, validate, now = Date.now }) {
     });
   }
 
+  // Bring stored records up to the current form (dropdown values instead of
+  // free text). Unreadable values stay as they are, for validation to flag.
+  transaction(() => {
+    const at = now();
+    for (const row of q.all.all(portId)) {
+      const before = row.data;
+      let data;
+      try {
+        data = cleanAsset(migrate(JSON.parse(before)));
+      } catch {
+        continue;
+      }
+      const after = JSON.stringify(data);
+      if (after === before) continue;
+      q.update.run(data.class, after, at, 'form update', portId, data.id);
+      q.log.run(portId, data.id, 'migrate', before, after, at, 'form update');
+    }
+  });
+
+  const intake = (asset) => cleanAsset(migrate(cleanAsset(asset)));
+
   const assets = () => q.all.all(portId).map(rowAsset);
   const plain = (list) =>
     list.map(({ rev: _r, updatedAt: _a, updatedBy: _b, ...rest }) => rest);
@@ -208,7 +239,7 @@ export function openAdminStore({ dir, seed, validate, now = Date.now }) {
   };
 
   function saveAsset({ asset, by, rev }) {
-    const data = cleanAsset(asset);
+    const data = intake(asset);
     return transaction(() => {
       const at = now();
       const existing = q.one.get(portId, data.id);
@@ -275,7 +306,7 @@ export function openAdminStore({ dir, seed, validate, now = Date.now }) {
       throw new AdminError(400, 'Nothing to import');
     if (rows.length > 5000)
       throw new AdminError(413, 'Import at most 5,000 rows at a time');
-    const incoming = rows.map(cleanAsset);
+    const incoming = rows.map(intake);
     const seen = new Set();
     for (const row of incoming) {
       if (seen.has(row.id))

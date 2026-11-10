@@ -81,7 +81,7 @@ test('validation checks field types, positions and either-class references', () 
   });
   assert.ok(errors.some((e) => e.includes('b1: use must be one of')));
   assert.ok(errors.some((e) => e.includes('b2: at must be [lat, lon]')));
-  assert.ok(errors.some((e) => e.includes('g1: lanes must be a number')));
+  assert.ok(errors.some((e) => e.includes('g1: lanes must be a whole number')));
   assert.ok(errors.some((e) => e.includes('y1: outline must be 3+')));
   assert.ok(!errors.some((e) => e.includes('r1')));
   // homeId may point at a berth, building or yard; meterId at the meter registry.
@@ -236,9 +236,9 @@ test('cards show readable fields, notes and sources', () => {
   assert.equal(byId(HUENEME_REGISTRY, 'berth-4').label, 'Berth 4 (RoRo)');
   // 2025 terminal plan: Berths 1-2 South Terminal, 4-5 North Terminal (POH),
   // the rest on the Navy Terminal.
-  assert.equal(byId(HUENEME_REGISTRY, 'berth-5').zone, 'North Terminal');
+  assert.equal(byId(HUENEME_REGISTRY, 'berth-5').zone, 'north_terminal');
   assert.equal(byId(HUENEME_REGISTRY, 'berth-5').operator, 'Port of Hueneme');
-  assert.equal(byId(HUENEME_REGISTRY, 'berth-8').zone, 'Navy Terminal');
+  assert.equal(byId(HUENEME_REGISTRY, 'berth-8').zone, 'navy_terminal');
   // Port staff: only Berths 1 and 2 have ship shore power.
   assert.deepEqual(
     HUENEME_REGISTRY.assets
