@@ -21,6 +21,7 @@ export const GROUP_COLORS = Object.freeze({
   che: '#20e7f2',
   harbor_craft: '#6aa8ff',
   rail: '#ff7ab6',
+  trucks: '#c39bff',
   electrical: '#7cff8a',
 });
 

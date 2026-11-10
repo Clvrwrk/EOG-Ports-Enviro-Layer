@@ -1,0 +1,110 @@
+{
+  "segments": [
+    {
+      "dist_m": 16093.44,
+      "grade": 0.5223,
+      "speed": 55,
+      "energy_kwh": 28.2867,
+      "soc_pct": 92.82,
+      "charging_event": false
+    },
+    {
+      "dist_m": 16093.44,
+      "grade": 0.5223,
+      "speed": 55,
+      "energy_kwh": 28.2867,
+      "soc_pct": 85.64,
+      "charging_event": false
+    },
+    {
+      "dist_m": 16093.44,
+      "grade": 1.149,
+      "speed": 55,
+      "energy_kwh": 36.4128,
+      "soc_pct": 76.4,
+      "charging_event": false
+    },
+    {
+      "dist_m": 16093.44,
+      "grade": 1.5505,
+      "speed": 55,
+      "energy_kwh": 41.6179,
+      "soc_pct": 65.84,
+      "charging_event": false
+    },
+    {
+      "dist_m": 16093.44,
+      "grade": 2.2873,
+      "speed": 55,
+      "energy_kwh": 51.1667,
+      "soc_pct": 52.85,
+      "charging_event": false
+    },
+    {
+      "dist_m": 11670.11,
+      "grade": 1.7252,
+      "speed": 55,
+      "energy_kwh": 31.8212,
+      "soc_pct": 44.77,
+      "charging_event": false
+    }
+  ],
+  "kpis": {
+    "total_kwh": 217.59191453367646,
+    "wh_per_mi": 3800.6345323440096,
+    "regen_kwh": 0,
+    "total_time_s": 3747.368956204855
+  },
+  "disclaimer": "Planning and feasibility tool only — not real-time dispatch guidance. Results depend on OEM assumptions, cached elevation, and posted speed limits. Verify against manufacturer claims before stakeholder decisions.",
+  "assumptions": [
+    {
+      "field": "C_rr",
+      "value": 0.0065,
+      "source": "oem_default",
+      "oem_default": 0.0065
+    },
+    {
+      "field": "drag_coefficient",
+      "value": 0.65,
+      "source": "oem_default",
+      "oem_default": 0.65
+    },
+    {
+      "field": "usable_kwh",
+      "value": 394,
+      "source": "oem_default",
+      "oem_default": 394
+    },
+    {
+      "field": "aux_kw_base",
+      "value": 10,
+      "source": "oem_default",
+      "oem_default": 10
+    },
+    {
+      "field": "regen_efficiency",
+      "value": 0.7,
+      "source": "oem_default",
+      "oem_default": 0.7
+    },
+    {
+      "field": "charging_greedy_strategy",
+      "value": 0.4,
+      "source": "documented_deferred_v2",
+      "oem_default": 0.35,
+      "category": "charging",
+      "note": "CHRG-06 deferred to v2 scored-greedy: intended weights time=0.4, energy=0.35, cost=0.25. v1 uses first-feasible greedy with shortest detour then highest power tie-break."
+    }
+  ],
+  "corridor_key": "polb_cajon_pass",
+  "truck_slug": "ecascadia_438",
+  "metadata": {
+    "elevation_source": "cache",
+    "segment_count": 6,
+    "weather_preset": "ideal",
+    "port_drayage_enabled": false,
+    "payload_lbs": 34000
+  },
+  "charging_stops": [],
+  "feasibility": { "verdict": "feasible", "tier": "public_hd", "stop_count": 0 }
+}

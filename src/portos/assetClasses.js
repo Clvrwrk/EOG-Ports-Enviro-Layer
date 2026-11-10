@@ -17,8 +17,13 @@
  *   path: [[lat, lon], ...]       line, e.g. a rail spur
  * `approximate: true` marks a position that was not surveyed.
  *
+ * Mobile equipment, locomotives, tugs and drayage trucks can name their
+ * model in the fleet catalog (`catalogId`, see fleet/catalog.js), which
+ * carries energy use and emissions, diesel and zero-emission.
+ *
  * Pure: no Cesium, no DOM.
  */
+import { modelsForAssetClass } from './fleet/catalog.js';
 
 /** Energy source an asset runs on. */
 export const POWERTRAINS = Object.freeze([
@@ -149,15 +154,12 @@ export const ASSET_GROUPS = Object.freeze({
   che: 'Cargo-handling equipment',
   harbor_craft: 'Tugs and harbor craft',
   rail: 'Locomotives',
+  trucks: 'Drayage trucks',
   electrical: 'Electrical',
 });
 
-/**
- * Asset classes. `group` is the inventory section a staff user sees;
- * `fields` lists every field, with `required: true` on the ones validation
- * insists on; `required` is the same list as plain keys.
- */
-export const ASSET_CLASSES = Object.freeze({
+/** Asset classes before the fleet catalog pickers are added. */
+const RAW_CLASSES = Object.freeze({
   // Cargo-handling equipment (CHE)
   utr: assetClass(
     'che',
@@ -173,6 +175,9 @@ export const ASSET_CLASSES = Object.freeze({
   reach_stacker: assetClass('che', 'Reach stacker', EQUIPMENT_FIELDS),
   top_handler: assetClass('che', 'Top handler', EQUIPMENT_FIELDS),
   forklift: assetClass('che', 'Forklift', EQUIPMENT_FIELDS),
+  rtg_crane: assetClass('che', 'Rubber-tired gantry crane', EQUIPMENT_FIELDS),
+  straddle_carrier: assetClass('che', 'Straddle carrier', EQUIPMENT_FIELDS),
+  empty_handler: assetClass('che', 'Empty container handler', EQUIPMENT_FIELDS),
   light_duty: assetClass(
     'che',
     'Light-duty pickup, van or runner',
@@ -216,6 +221,27 @@ export const ASSET_CLASSES = Object.freeze({
         ['line_haul', 'Line haul'],
       ]),
     }),
+  ]),
+
+  // Drayage trucks serving the port (owned by trucking companies, listed
+  // so the EV planner and freight footprint can use the real fleet mix).
+  drayage_truck: assetClass('trucks', 'Drayage truck or truck fleet', [
+    POWERTRAIN_FIELD,
+    f('units', 'Trucks in this fleet', 'number', { required: true }),
+    f('make', 'Make', 'text'),
+    f('model', 'Model', 'text'),
+    f('year', 'Model year', 'year'),
+    f('tripsPerDay', 'Port trips per truck per day', 'number'),
+    f('cargo', 'Main cargo', 'enum', {
+      options: options([
+        ['container', 'Containers'],
+        ['reefer', 'Reefer containers (fruit)'],
+        ['autos', 'New vehicles (auto carrier)'],
+        ['breakbulk', 'Break-bulk or project cargo'],
+        ['other', 'Other'],
+      ]),
+    }),
+    f('homeId', 'Staging yard', 'ref', { refClass: ['yard', 'building'] }),
   ]),
 
   // Fixed assets
@@ -333,6 +359,36 @@ export const ASSET_CLASSES = Object.freeze({
     ],
   ),
 });
+
+/** The catalog model picker for `cls`, or null when the catalog has none. */
+function catalogField(cls) {
+  const models = modelsForAssetClass(cls);
+  if (models.length === 0) return null;
+  return f('catalogId', 'Fleet catalog model', 'enum', {
+    options: options(models.map((m) => [m.id, m.label])),
+    help: 'Model in the fleet catalog (/ev-planning): its energy use and emissions, diesel and zero-emission.',
+  });
+}
+
+/**
+ * Asset classes. `group` is the inventory section a staff user sees;
+ * `fields` lists every field, with `required: true` on the ones validation
+ * insists on; `required` is the same list as plain keys. Classes with fleet
+ * catalog models also get a `catalogId` picker.
+ */
+export const ASSET_CLASSES = Object.freeze(
+  Object.fromEntries(
+    Object.entries(RAW_CLASSES).map(([cls, definition]) => {
+      const pick = catalogField(cls);
+      if (!pick) return [cls, definition];
+      const own = definition.fields.slice(COMMON_FIELDS.length);
+      return [
+        cls,
+        assetClass(definition.group, definition.label, [...own, pick]),
+      ];
+    }),
+  ),
+);
 
 /** The field definition for `key` on `cls`, or undefined. */
 export function fieldOf(cls, key) {
