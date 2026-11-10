@@ -9,7 +9,7 @@ const W = 440;
 const H = 110;
 const STYLE_ID = 'port-usage-style';
 const CSS = `
-.port-usage{position:fixed;right:12px;bottom:64px;z-index:40;width:${W + 20}px;background:rgba(10,14,22,.9);color:#e8ecf2;
+.port-usage{position:fixed;left:472px;bottom:100px;z-index:40;width:${W + 20}px;background:rgba(10,14,22,.9);color:#e8ecf2;
   border:1px solid #2b3648;border-radius:8px;padding:8px 10px;font:12px/1.4 system-ui,sans-serif;pointer-events:auto}
 .port-usage h3{margin:0;font-size:12px;display:flex;justify-content:space-between;gap:8px}
 .port-usage h3 b{font-variant-numeric:tabular-nums;color:#20e7f2}
