@@ -28,3 +28,7 @@ pinokio/.installed
 
 # Transient: a release interrupted mid-assembly (npm run changelog recovers it)
 changelog.d/.assembling/
+
+# Real port data kept out of the repository (meter accounts, ship call history).
+# Served from /private/. See src/portos/vessels/load.js.
+public/private/
