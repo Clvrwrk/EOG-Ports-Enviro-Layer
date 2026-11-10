@@ -1,9 +1,10 @@
 /**
  * Cesium drawing of the port's electrical network (network.js) and its
  * reefer plugs (plugs.js): lines for feeders, service drops and branches,
- * dots that run along each line in the direction power flows (faster and
- * larger with more kW), blocks for transformers and racks, and one box per
- * reefer plug coloured by what it is drawing.
+ * small lightning-bolt dots that run along each line in the direction power
+ * flows (faster with more kW, and kept few and far apart so the picture
+ * stays calm), blocks for transformers and racks, and one box per reefer
+ * plug coloured by what it is drawing.
  */
 import * as Cesium from 'cesium';
 import { pathLength, pointAlong } from './network.js';
@@ -23,8 +24,51 @@ const PLUG_COLORS = {
 };
 const WIDTH = { feeder: 5, service: 3, branch: 2 };
 /** Metres between flow dots, and the most dots on one line. */
-const DOT_SPACING = 45;
-const MAX_DOTS = 6;
+const DOT_SPACING = 130;
+const MAX_DOTS = 3;
+/** Flow dot size on screen in pixels: quiet lines to the busiest. */
+const DOT_PX = [12, 14];
+const BOLT = '#ffe066';
+const dotImages = new Map();
+
+/**
+ * A flow dot: a dark disc ringed in the line's colour with a lightning
+ * bolt inside. Drawn once per colour and shared by every dot.
+ */
+export function boltDot(color) {
+  if (dotImages.has(color)) return dotImages.get(color);
+  const size = 48;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.beginPath();
+    ctx.arc(size / 2, size / 2, size / 2 - 4, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(11,15,23,0.92)';
+    ctx.fill();
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = color;
+    ctx.stroke();
+    // Bolt, on a 24-unit grid scaled to the disc.
+    const k = size / 24;
+    ctx.beginPath();
+    for (const [i, [x, y]] of [
+      [13.5, 4],
+      [7.5, 13],
+      [11.5, 13],
+      [10, 20],
+      [16.5, 10.5],
+      [12.5, 10.5],
+    ].entries())
+      ctx[i ? 'lineTo' : 'moveTo'](x * k, y * k);
+    ctx.closePath();
+    ctx.fillStyle = BOLT;
+    ctx.fill();
+  }
+  dotImages.set(color, canvas);
+  return canvas;
+}
 
 const tint = (hex, alpha = 1) =>
   Cesium.Color.fromCssColorString(hex).withAlpha(alpha);
@@ -32,7 +76,7 @@ const flat = (points) => points.flatMap(([lat, lon]) => [lon, lat]);
 
 /** Dot speed in metres per second for a flow. */
 export function flowSpeed(kw) {
-  return kw > 0.5 ? Math.min(90, 12 + 2.2 * Math.sqrt(kw)) : 0;
+  return kw > 0.5 ? Math.min(55, 10 + 1.4 * Math.sqrt(kw)) : 0;
 }
 
 /**
@@ -71,11 +115,10 @@ export function createNetworkView(dataSource, network, plugMap) {
         entities.add({
           id: `${GRID_ENTITY_PREFIX}dot:${edge.id}:${i}`,
           show: false,
-          point: {
-            pixelSize: 6,
-            color: Cesium.Color.WHITE,
-            outlineColor: tint(base),
-            outlineWidth: 2,
+          billboard: {
+            image: boltDot(base),
+            width: DOT_PX[0],
+            height: DOT_PX[0],
             heightReference: REL,
             disableDepthTestDistance: Number.POSITIVE_INFINITY,
           },
@@ -88,9 +131,11 @@ export function createNetworkView(dataSource, network, plugMap) {
     const big = node.kind === 'feed';
     const size = big
       ? [9, 9, 7]
-      : node.kind === 'rack'
-        ? [3, 1.2, 2.2]
-        : [3, 3, 2.4];
+      : node.kind === 'source'
+        ? [6, 6, 5]
+        : node.kind === 'rack'
+          ? [3, 1.2, 2.2]
+          : [3, 3, 2.4];
     const [lat, lon] = node.at;
     nodes.push(
       entities.add({
@@ -104,7 +149,13 @@ export function createNetworkView(dataSource, network, plugMap) {
         box: {
           dimensions: new Cesium.Cartesian3(...size),
           material: tint(
-            big ? FEEDER : node.kind === 'transformer' ? '#9be37a' : '#d9e2f2',
+            big
+              ? FEEDER
+              : node.kind === 'source'
+                ? '#ff9f43'
+                : node.kind === 'transformer'
+                  ? '#9be37a'
+                  : '#d9e2f2',
             0.95,
           ),
           heightReference: REL,
@@ -158,8 +209,17 @@ export function createNetworkView(dataSource, network, plugMap) {
             state === 'dead' ? 0.5 : 0.9,
           );
         }
-        const size = Math.min(12, 5 + Math.sqrt(flow.kw) / 6);
-        for (const dot of entry.dots) dot.point.pixelSize = size;
+        const size = Math.min(
+          DOT_PX[1],
+          DOT_PX[0] + Math.sqrt(Math.max(0, flow.kw)) / 12,
+        );
+        const image = boltDot(state === 'over' ? OVER : entry.base);
+        for (const dot of entry.dots) {
+          dot.billboard.width = size;
+          dot.billboard.height = size;
+          if (state !== entry.dotState) dot.billboard.image = image;
+        }
+        entry.dotState = state;
         placeDots(entry);
       }
     },

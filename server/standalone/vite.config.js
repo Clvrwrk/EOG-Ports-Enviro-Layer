@@ -5,6 +5,7 @@ import { createBrowserViteConfig } from '../../build/vite.js';
 import { localProviderPlugins } from '../providers/local.js';
 import { localMcpPlugin } from '../mcp/plugin.js';
 import { portosAdminPlugin } from '../portos/adminApi.js';
+import { portosGridPlanPlugin } from '../portos/gridPlanApi.js';
 import { siteGatePlugin } from '../portos/siteGate.js';
 import { apiNotFoundPlugin } from './api-not-found.js';
 import { googleTokenUnavailablePlugin } from './google-token-unavailable.js';
@@ -34,6 +35,7 @@ export function standaloneConfig(
       }),
       localMcpPlugin(),
       portosAdminPlugin(),
+      portosGridPlanPlugin(),
       googleTokenUnavailablePlugin(),
       apiNotFoundPlugin(),
       unwatchedRuntimeDirsPlugin(),

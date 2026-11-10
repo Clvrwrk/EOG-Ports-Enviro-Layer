@@ -12,6 +12,7 @@
 import { RATE_SHEETS } from '../demandDriver.js';
 import { CHARGING_STRATEGIES } from '../fleetSim.js';
 import { FLEET_PLAN } from '../hueneme.js';
+import { TRANSFORMER_KVA, sourceLabel } from '../meters/gridPlan.js';
 import { STEPS_PER_DAY } from '../touCalendar.js';
 import { TWIN_COLORS } from './view.js';
 
@@ -61,6 +62,7 @@ const CSS = `
 .port-twin:not(.off) .switch{border-color:#20e7f2;color:#20e7f2}
 .port-twin select{max-width:190px}.port-twin a{color:#20e7f2}
 .port-twin .links{display:flex;gap:12px;flex-wrap:wrap;margin-top:4px}
+.port-twin .grid-plan .row{margin:4px 0;flex-wrap:wrap}.port-twin button:disabled,.port-twin select:disabled{opacity:.45;cursor:default}
 .port-twin .note{color:#9aa6b8;font-size:11px;margin:4px 0 0}
 .port-twin-card{position:fixed;z-index:41;min-width:220px;max-width:300px;background:rgba(10,14,22,.94);color:#e8ecf2;
   border:1px solid #20e7f2;border-radius:8px;padding:8px 10px;font:12px/1.4 system-ui,sans-serif;pointer-events:auto}
@@ -220,6 +222,7 @@ export function createTwinPanel(
       ),
     ),
   );
+  const layerBoxes = new Map();
   const layerBox = el(
     'fieldset',
     { class: 'layers' },
@@ -231,9 +234,158 @@ export function createTwinPanel(
         onchange: () => handlers.onLayer?.(layer.id, box.checked),
       });
       box.checked = layer.on;
+      layerBoxes.set(layer.id, box);
       return el('label', {}, box, layer.label);
     }),
   );
+  // Conduit routes: everything here is a button or a dropdown, and every
+  // position comes from a click on the map, so nothing can be mistyped.
+  const BACKBONE = '';
+  let gridView = null;
+  let gridSource = '';
+  let gridMeter = '';
+  const gridDo = (action, value) => handlers.onGrid?.(action, value);
+  const gridEdit = el(
+    'button',
+    { class: 'switch', onclick: () => gridDo('edit', !gridView?.editing) },
+    'Redraw routes on the map',
+  );
+  const gridHelp = el('p', { class: 'note' });
+  const gridLine = select('grid-line', [['', 'Loading…']], '', (id) =>
+    gridDo('line', id),
+  );
+  const gridRemoveBend = el(
+    'button',
+    { onclick: () => gridDo('removeBend') },
+    'Remove bend',
+  );
+  const gridReset = el(
+    'button',
+    { onclick: () => gridDo('resetRoute') },
+    'Back to automatic',
+  );
+  const gridPlace = el(
+    'button',
+    { onclick: () => gridDo('place', !gridView?.placing) },
+    'Add incoming transformer',
+  );
+  const gridSourcePick = select('grid-source', [['', 'None yet']], '', (id) => {
+    gridSource = id;
+    drawGrid();
+  });
+  const gridSize = select('grid-size', [['', 'Size not set']], '', (kva) =>
+    gridDo('size', { id: gridSource, kva: kva ? Number(kva) : null }),
+  );
+  const gridRemoveSource = el(
+    'button',
+    { onclick: () => gridDo('removeSource', gridSource) },
+    'Remove transformer',
+  );
+  const gridMeterPick = select('grid-meter', [['', 'Loading…']], '', (id) => {
+    gridMeter = id;
+    drawGrid();
+  });
+  const gridFed = select(
+    'grid-fed',
+    [[BACKBONE, 'Feeder backbone']],
+    '',
+    (id) => gridDo('feed', { meterId: gridMeter, sourceId: id || null }),
+  );
+  const gridSave = el(
+    'button',
+    { onclick: () => gridDo('save') },
+    'Save routes',
+  );
+  const gridDiscard = el(
+    'button',
+    { onclick: () => gridDo('discard') },
+    'Discard changes',
+  );
+  const gridStatus = el('p', { class: 'note' });
+  const gridTools = el(
+    'div',
+    {},
+    gridHelp,
+    el('label', {}, 'Line', gridLine),
+    el('div', { class: 'row' }, gridRemoveBend, gridReset),
+    el('div', { class: 'row' }, gridPlace),
+    el('label', {}, 'Transformer', gridSourcePick),
+    el('label', {}, 'Size', gridSize),
+    el('div', { class: 'row' }, gridRemoveSource),
+    el('label', {}, 'Meter', gridMeterPick),
+    el('label', {}, 'Fed from', gridFed),
+  );
+  const gridBox = el(
+    'fieldset',
+    { class: 'grid-plan' },
+    el('legend', {}, 'Conduit routes'),
+    gridEdit,
+    gridTools,
+    el('div', { class: 'row' }, gridSave, gridDiscard),
+    gridStatus,
+  );
+  gridBox.hidden = true;
+  function drawGrid() {
+    const view = gridView;
+    if (!view) return;
+    gridBox.hidden = false;
+    gridEdit.textContent = view.editing
+      ? 'Done redrawing'
+      : 'Redraw routes on the map';
+    gridTools.hidden = !view.editing;
+    gridHelp.textContent = view.placing
+      ? 'Click the map where the transformer stands.'
+      : view.edgeId
+        ? 'Click the map to add a bend to the white line. Drag a bend to move it, right-click a bend to remove it.'
+        : 'Click a line on the map, or choose one below. Drag the orange transformers and the yellow utility feed to move them.';
+    fill(gridLine, [['', 'Choose a line'], ...view.lines], view.edgeId ?? '');
+    gridRemoveBend.disabled = view.bend == null;
+    gridReset.disabled = !view.drawn;
+    gridPlace.textContent = view.placing
+      ? 'Cancel placing'
+      : 'Add incoming transformer';
+    const sources = view.sources.map((s) => [s.id, sourceLabel(s)]);
+    if (!sources.some(([id]) => id === gridSource))
+      gridSource = sources.at(-1)?.[0] ?? '';
+    fill(
+      gridSourcePick,
+      sources.length ? sources : [['', 'None placed yet']],
+      gridSource,
+    );
+    const source = view.sources.find((s) => s.id === gridSource);
+    fill(
+      gridSize,
+      [
+        ['', 'Size not set'],
+        ...TRANSFORMER_KVA.map((kva) => [
+          kva,
+          `${kva.toLocaleString('en-US')} kVA`,
+        ]),
+      ],
+      source?.kva ?? '',
+    );
+    gridSourcePick.disabled = !source;
+    gridSize.disabled = !source;
+    gridRemoveSource.disabled = !source;
+    if (!view.meters.some(([id]) => id === gridMeter))
+      gridMeter = view.meters[0]?.[0] ?? '';
+    fill(gridMeterPick, view.meters, gridMeter);
+    fill(
+      gridFed,
+      [[BACKBONE, 'Feeder backbone (automatic)'], ...sources],
+      view.fedFrom[gridMeter] ?? BACKBONE,
+    );
+    gridFed.disabled = !sources.length;
+    gridSave.disabled = !view.dirty;
+    gridDiscard.disabled = !view.dirty;
+    gridStatus.textContent =
+      view.status ||
+      (view.dirty
+        ? 'Unsaved changes.'
+        : view.where === 'server'
+          ? 'Routes are shared with everyone signed in.'
+          : 'Routes are kept in this browser only.');
+  }
   const driverText = el('p', { class: 'driver' });
   const driverNote = el('p', { class: 'sub' });
   let driverStep = null;
@@ -399,6 +551,7 @@ export function createTwinPanel(
     driverBox,
     layerBox,
     meterBox,
+    gridBox,
     el(
       'p',
       { class: 'sub legend' },
@@ -593,6 +746,16 @@ export function createTwinPanel(
     /** Describe the loaded meter registry under the meters heading. */
     showMeters(registry) {
       meterNote.textContent = `${registry.meters.length} service points${registry.sample ? ' (sample numbers, not real bills)' : registry.asOf ? `, bills to ${registry.asOf}` : ''}. Columns are sized by yearly kWh and coloured by end use; red means a scenario overloads that service. Click one for its data.`;
+    },
+    /** The conduit route editor's state (see the twin's showGrid). */
+    showGrid(view) {
+      gridView = view;
+      drawGrid();
+    },
+    /** Tick a layer's box when the twin switched the layer itself. */
+    setLayer(id, on) {
+      const box = layerBoxes.get(id);
+      if (box) box.checked = on;
     },
     showCard(data, x, y) {
       card?.remove();
