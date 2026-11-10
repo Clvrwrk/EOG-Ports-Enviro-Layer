@@ -170,3 +170,36 @@ test('truck factors can be replaced (the EV Planning catalog hook)', () => {
   const base = freightFootprint();
   close(doubled.byLeg.drayage.co2e / base.byLeg.drayage.co2e, 2, 1e-9);
 });
+
+test('the EV Planning fleet catalog supplies trucks, payloads and rail', async () => {
+  const { fleetRailFactors, fleetTruckFactors } =
+    await import('./freightFleet.js');
+  const { fleetModel } = await import('../portos/fleet/catalog.js');
+  const truckFactors = fleetTruckFactors();
+  const railFactors = fleetRailFactors();
+  assert.equal(truckFactors.byKind.reefer.diesel.id, 'truck-diesel-reefer');
+  assert.equal(
+    truckFactors.byKind.auto_carrier.diesel.payloadTons,
+    fleetModel('truck-diesel-auto-carrier').payloadTons,
+  );
+  const leg = truckLeg({
+    tonnes: 120,
+    miles: 10,
+    payloadT: 99,
+    factors: truckFactors,
+    kind: 'auto_carrier',
+  });
+  assert.equal(leg.model, 'truck-diesel-auto-carrier');
+  assert.equal(leg.trips, 120 / leg.payloadT);
+  const f = freightFootprint({ truckFactors, railFactors });
+  const bev = freightFootprint({
+    truckFactors,
+    railFactors,
+    scenario: { drayage: 'electric' },
+  });
+  assert.ok(f.byLeg.drayage.nox > 0);
+  assert.equal(bev.byLeg.drayage.nox, 0);
+  assert.ok(bev.byLeg.drayage.co2e < f.byLeg.drayage.co2e);
+  const rail = railLeg({ tonnes: 480, miles: 1, factors: railFactors });
+  close(rail.dieselGallons, 1, 1e-9);
+});

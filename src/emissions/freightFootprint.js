@@ -196,31 +196,60 @@ export function portCallIntensity(ship, { gwpSet = GWP_SETS.AR5 } = {}) {
   };
 }
 
-/** Per-mile truck factors (tonnes of pollutant per vehicle-mile). */
-export function truckPerMile(powertrain = 'diesel', factors = TRUCK_FACTORS) {
+/**
+ * Per-mile truck factors (tonnes of pollutant per vehicle-mile).
+ * A factor set is either the TRUCK_FACTORS shape (mpg / kWh per mile and
+ * certification limits) or a ready per-mile entry:
+ *   { id, label, payloadTons?, perMile: { co2eKg, noxG, pm25G },
+ *     dieselGallonsPerMile?, kwhPerMile? }
+ * `kind` ('container' | 'reefer' | 'auto_carrier') picks factors.byKind[kind]
+ * when the set has one, so each cargo can use its own truck model.
+ */
+export function truckPerMile(
+  powertrain = 'diesel',
+  factors = TRUCK_FACTORS,
+  kind = null,
+) {
+  const e = factors.byKind?.[kind]?.[powertrain] ?? factors[powertrain];
+  if (e.perMile) {
+    const co2e = e.perMile.co2eKg / 1000;
+    return {
+      id: e.id,
+      label: e.label,
+      payloadTons: e.payloadTons ?? null,
+      dieselGallons: e.dieselGallonsPerMile ?? 0,
+      gridKwh: e.kwhPerMile ?? 0,
+      tonnes: {
+        co2e,
+        co2: co2e,
+        nox: e.perMile.noxG / 1e6,
+        pm25: e.perMile.pm25G / 1e6,
+      },
+    };
+  }
   if (powertrain === 'electric') {
-    const e = factors.electric;
     const co2e = (e.kwhPerMile * e.gridKgCo2ePerKwh) / 1000;
     return {
       id: e.id,
       label: e.label,
+      payloadTons: e.payloadTons ?? null,
       gridKwh: e.kwhPerMile,
       tonnes: { co2e, co2: co2e, nox: 0, pm25: 0 },
     };
   }
-  const d = factors.diesel;
-  const gallons = 1 / d.mpg;
-  const bhpHr = gallons * d.bhpHrPerGallon;
-  const co2 = (gallons * d.kgCo2PerGallon) / 1000;
+  const gallons = 1 / e.mpg;
+  const bhpHr = gallons * e.bhpHrPerGallon;
+  const co2 = (gallons * e.kgCo2PerGallon) / 1000;
   return {
-    id: d.id,
-    label: d.label,
+    id: e.id,
+    label: e.label,
+    payloadTons: e.payloadTons ?? null,
     dieselGallons: gallons,
     tonnes: {
       co2e: co2,
       co2,
-      nox: (bhpHr * d.noxGPerBhpHr) / 1e6,
-      pm25: (bhpHr * d.pmGPerBhpHr * 0.97) / 1e6,
+      nox: (bhpHr * e.noxGPerBhpHr) / 1e6,
+      pm25: (bhpHr * e.pmGPerBhpHr * 0.97) / 1e6,
     },
   };
 }
@@ -236,13 +265,18 @@ export function truckLeg({
   emptyReturn = 1,
   powertrain = 'diesel',
   factors = TRUCK_FACTORS,
+  kind = null,
 }) {
-  const trips = tonnes / payloadT;
+  const perMile = truckPerMile(powertrain, factors, kind);
+  // A truck model that names its own payload (the fleet catalog) wins.
+  const loadT = perMile.payloadTons ?? payloadT;
+  const trips = tonnes / loadT;
   const vehicleMiles = trips * miles * (1 + emptyReturn);
-  const perMile = truckPerMile(powertrain, factors);
   return {
     mode: 'truck',
     powertrain,
+    model: perMile.id,
+    payloadT: loadT,
     trips,
     vehicleMiles,
     tonMiles: tonnes * miles,
@@ -290,7 +324,8 @@ export const commodityTonnes = (c) => c.tonnes ?? c.units * c.tonnesPerUnit;
 /**
  * The whole footprint.
  * scenario: { drayage: 'diesel' | 'electric', onwardTruck: 'diesel' | 'electric' }
- * truckFactors: replaces TRUCK_FACTORS (the EV Planning catalog plugs in here).
+ * truckFactors / railFactors: replace TRUCK_FACTORS / RAIL_FACTORS; the EV
+ * Planning fleet catalog plugs in here (see freightFleet.js).
  *
  * Returns { totals, byLeg, byCommodity, flows, sites, sources, notModeled }.
  * flows are map-ready: { id, leg, commodity, from, to, points?, tonnes,
@@ -300,6 +335,7 @@ export function freightFootprint({
   commodities = COMMODITIES,
   scenario = {},
   truckFactors = TRUCK_FACTORS,
+  railFactors = RAIL_FACTORS,
   gwpSet = GWP_SETS.AR5,
 } = {}) {
   const drayagePowertrain = scenario.drayage ?? 'diesel';
@@ -371,6 +407,7 @@ export function freightFootprint({
         emptyReturn: 1,
         powertrain: drayagePowertrain,
         factors: truckFactors,
+        kind: c.truckKind ?? null,
       });
       addInto(row.legs.drayage, dray.tonnes);
       energy.dieselGallons += dray.dieselGallons;
@@ -402,7 +439,7 @@ export function freightFootprint({
         );
         const leg =
           mode === 'rail'
-            ? railLeg({ tonnes: flowT, miles: onMiles })
+            ? railLeg({ tonnes: flowT, miles: onMiles, factors: railFactors })
             : truckLeg({
                 tonnes: flowT,
                 miles: onMiles,
@@ -410,6 +447,7 @@ export function freightFootprint({
                 emptyReturn: c.onwardEmptyReturn ?? 0.5,
                 powertrain: onwardPowertrain,
                 factors: truckFactors,
+                kind: c.truckKind ?? null,
               });
         addInto(row.legs.onward, leg.tonnes);
         energy.dieselGallons += leg.dieselGallons;
