@@ -1,4 +1,5 @@
 import { createOpenAiChatHandler } from './openai/chat.js';
+import { createScenarioInterviewHandler } from './openai/scenarioInterview.js';
 import { defaultSourceRoot } from './common/source-root.js';
 import { handleHudSummary } from './openai/hud-summary.js';
 import { createDebugLogHandler } from './openai/debug-log.js';
@@ -26,6 +27,12 @@ function openAiRealtimeProxy({
     middlewares.use(
       '/api/openai/chat',
       createOpenAiChatHandler({ ...realtime, annotationGuidance }),
+    );
+    // /scenarios "Build by interview": same origin gate and key as chat,
+    // with its own per-visitor limit and a daily cap.
+    middlewares.use(
+      '/api/scenario-interview',
+      createScenarioInterviewHandler(),
     );
     // Cost-bearing and log endpoints refuse cross-site browser requests
     // (see server/providers/common/same-site.js and SECURITY.md).

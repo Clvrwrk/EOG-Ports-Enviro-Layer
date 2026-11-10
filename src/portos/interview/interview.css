@@ -1,0 +1,157 @@
+/* "Build by interview" dialog on /scenarios. Uses the builder's tokens. */
+.interview {
+  width: min(980px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-1);
+  color: var(--text-primary);
+}
+.interview::backdrop {
+  background: rgb(0 0 0 / 45%);
+}
+.interview .iv-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.interview h2 {
+  margin: 0;
+  font-size: 17px;
+}
+.interview h3 {
+  margin: 12px 0 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.interview .sub {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.interview .iv-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: 16px;
+  padding: 12px 16px;
+}
+@media (max-width: 720px) {
+  .interview .iv-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.interview .iv-chat {
+  height: min(46vh, 420px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.interview .iv-msg {
+  max-width: 88%;
+  padding: 8px 11px;
+  border-radius: 10px;
+  white-space: pre-wrap;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.interview .iv-msg.ai {
+  align-self: flex-start;
+  background: var(--surface-0);
+  border: 1px solid var(--border);
+}
+.interview .iv-msg.me {
+  align-self: flex-end;
+  background: var(--accent);
+  color: #fff;
+}
+.interview .iv-msg.note {
+  align-self: center;
+  font-size: 12px;
+  color: var(--warning);
+}
+.interview.busy .iv-chat::after {
+  content: 'Thinking…';
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.interview .iv-side ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+}
+.interview .iv-side .muted {
+  color: var(--text-muted);
+}
+.interview .iv-side dl {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 4px 12px;
+  margin: 0;
+  font-size: 13px;
+}
+.interview .iv-side dt {
+  color: var(--text-secondary);
+}
+.interview .iv-side dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.interview small.good {
+  color: var(--good);
+}
+.interview small.bad {
+  color: var(--bad);
+}
+.interview .iv-answer {
+  padding: 10px 16px 14px;
+  border-top: 1px solid var(--border);
+}
+.interview .iv-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.interview .iv-type {
+  display: flex;
+  gap: 8px;
+}
+.interview .iv-type[hidden] {
+  display: none;
+}
+.interview .iv-type input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-0);
+  color: var(--text-primary);
+}
+.interview .iv-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.interview.busy .iv-choices button,
+.interview.busy .iv-type button {
+  opacity: 0.5;
+  pointer-events: none;
+}
+.interview [hidden] {
+  display: none !important;
+}
+.interview .iv-side dd.iv-warn {
+  grid-column: 1 / -1;
+  text-align: left;
+  font-size: 12px;
+  color: var(--warning);
+}

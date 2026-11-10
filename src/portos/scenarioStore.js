@@ -13,6 +13,7 @@ import {
   SPECS,
   UNIT_COSTS,
 } from './hueneme.js';
+import { DELIVERED_PROFILES } from './delivered.js';
 import { DEFAULT_SCENARIO } from './scenario.js';
 import { TARIFFS } from './tariffs.js';
 
@@ -82,6 +83,29 @@ export function normalizeScenario(input = {}) {
           : clamp(threshold, 0, 1_000_000, 'auto'),
     };
   }
+  let tariffAdjust = null;
+  if (raw.tariffAdjust && typeof raw.tariffAdjust === 'object') {
+    const pct = (value) => Math.round(clamp(value, -90, 300, 0) * 10) / 10;
+    const adjust = {
+      energyPct: pct(raw.tariffAdjust.energyPct),
+      demandPct: pct(raw.tariffAdjust.demandPct),
+      customerPct: pct(raw.tariffAdjust.customerPct),
+    };
+    if (adjust.energyPct || adjust.demandPct || adjust.customerPct)
+      tariffAdjust = adjust;
+  }
+  let delivered = null;
+  if (raw.delivered && typeof raw.delivered === 'object') {
+    const sharePct = clamp(raw.delivered.sharePct, 0, 100, 0);
+    if (sharePct > 0)
+      delivered = {
+        sharePct,
+        profile: DELIVERED_PROFILES[raw.delivered.profile]
+          ? raw.delivered.profile
+          : 'share',
+        pricePerKwh: clamp(raw.delivered.pricePerKwh, 0, 2, 0),
+      };
+  }
   const types = Array.isArray(raw.shorePowerTypes)
     ? raw.shorePowerTypes.filter((type) => CALL_TYPES.includes(type))
     : [...d.shorePowerTypes];
@@ -107,6 +131,8 @@ export function normalizeScenario(input = {}) {
     battery,
     capexMethod: raw.capexMethod === 'workbook' ? 'workbook' : 'per-unit',
     fillGapWithDiesel: raw.fillGapWithDiesel !== false,
+    tariffAdjust,
+    delivered,
   };
 }
 
@@ -296,6 +322,12 @@ export const METRICS = Object.freeze([
   { id: 'spend', label: 'Energy spend / yr', unit: '$', better: -1 },
   { id: 'electricity', label: 'Electricity bill / yr', unit: '$', better: -1 },
   { id: 'demand', label: 'of which demand charges', unit: '$', better: -1 },
+  {
+    id: 'delivered',
+    label: 'Delivered energy cost / yr',
+    unit: '$',
+    better: -1,
+  },
   { id: 'diesel', label: 'Diesel cost / yr', unit: '$', better: -1 },
   { id: 'peakKw', label: 'Peak at the meter', unit: 'kW', better: -1 },
   { id: 'mwh', label: 'Grid energy / yr', unit: 'MWh', better: 0 },
@@ -308,9 +340,10 @@ export const METRICS = Object.freeze([
 export function summarize(result) {
   const t = result.totals;
   return {
-    spend: t.electricityCost + t.dieselCost,
+    spend: t.electricityCost + (t.deliveredCost ?? 0) + t.dieselCost,
     electricity: t.electricityCost,
     demand: t.demandCost,
+    delivered: t.deliveredCost ?? 0,
     diesel: t.dieselCost,
     peakKw: t.peakKw,
     mwh: t.kwh / 1000,
