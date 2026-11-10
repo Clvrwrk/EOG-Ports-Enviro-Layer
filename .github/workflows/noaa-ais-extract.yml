@@ -1,0 +1,34 @@
+name: NOAA AIS extract (scratch)
+
+on:
+  push:
+    branches: [claude/project-thread-q7wpms]
+    paths: [.github/workflows/noaa-ais-extract.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Download and cut daily files to the Hueneme box
+        run: |
+          mkdir -p scratch/noaa-hueneme
+          for d in 2023_06_11 2023_06_12 2023_06_13 2023_06_14 2023_06_15 2023_06_16 2023_06_17; do
+            y=${d%%_*}
+            curl -fsSL -o /tmp/ais.zip "https://coast.noaa.gov/htdata/CMSP/AISDataHandler/$y/AIS_$d.zip"
+            unzip -p /tmp/ais.zip | python3 tools/ais/extract_marinecadastre.py \
+              --bbox=-119.33,34.05,-119.15,34.20 | gzip -9 > scratch/noaa-hueneme/AIS_$d.csv.gz
+            rm /tmp/ais.zip
+            echo "$d rows: $(zcat scratch/noaa-hueneme/AIS_$d.csv.gz | wc -l)"
+          done
+      - name: Commit extracts back to the branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898583+github-actions[bot]@users.noreply.github.com"
+          git add scratch/noaa-hueneme
+          git commit -m "Add NOAA MarineCadastre AIS extracts for the Hueneme box (scratch)"
+          git push
