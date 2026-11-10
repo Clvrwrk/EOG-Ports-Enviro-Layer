@@ -13,6 +13,7 @@ test('pages are recognised with or without .html and a trailing slash', () => {
   assert.equal(currentPage('/scenarios'), 'scenarios');
   assert.equal(currentPage('/scenarios.html'), 'scenarios');
   assert.equal(currentPage('/admin'), 'admin');
+  assert.equal(currentPage('/ev-planning'), 'ev');
   assert.equal(currentPage('/share/abc'), null);
 });
 
@@ -31,6 +32,7 @@ test('the breadcrumb follows /[category]/[state]/[name] down to the page', () =>
     'Port of Hueneme',
     'Asset admin',
   ]);
+  assert.equal(labels(breadcrumbs('/ev-planning')).at(-1), 'EV Planning');
   assert.deepEqual(labels(breadcrumbs(TWIN_PATH)), [
     'Globe',
     'Ports',
@@ -49,11 +51,11 @@ test('crumbs link up the trail and the current page is not a link', () => {
 });
 
 test('every page links to every other page and none links to itself', () => {
-  for (const path of ['/', TWIN_PATH, '/scenarios', '/admin']) {
+  for (const path of ['/', TWIN_PATH, '/scenarios', '/admin', '/ev-planning']) {
     const page = currentPage(path);
     const ids = linksFor(path).map((link) => link.id);
     assert.ok(!ids.includes(page), `${path} links to itself`);
-    for (const id of ['twin', 'scenarios', 'admin', 'globe'])
+    for (const id of ['twin', 'scenarios', 'admin', 'globe', 'ev'])
       if (id !== page) assert.ok(ids.includes(id), `${path} lacks ${id}`);
     assert.ok(ids.includes('layers'), `${path} lacks the twin layers`);
   }
@@ -64,5 +66,6 @@ test('the scenario page, the admin page and the globe all mount the bar', () => 
   const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
   assert.match(read('../page/scenariosPage.js'), /mountSiteNav\(/);
   assert.match(read('../admin/adminPage.js'), /mountSiteNav\(/);
+  assert.match(read('../fleet/evPlanningPage.js'), /mountSiteNav\(/);
   assert.match(read('../../main.js'), /mountSiteNav\(\{ variant: 'globe' \}\)/);
 });

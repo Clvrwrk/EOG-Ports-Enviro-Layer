@@ -25,6 +25,7 @@ export const LAYER_NAME_KEYS = Object.freeze({
   'ais-live-vessels': msg('Live AIS Vessels'),
   'military-installations': msg('Mapped Installations'),
   'port-emissions': msg('Port Emissions'),
+  'freight-footprint': msg('Freight Footprint'),
   'military-awareness': msg('Global Context'),
   'local-datacenters': msg('Datacenters'),
   'local-dams': msg('Dams'),

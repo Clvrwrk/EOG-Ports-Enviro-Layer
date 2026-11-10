@@ -5,6 +5,7 @@
  * history view. No DOM, so the same code runs in tests.
  */
 import { ASSET_CLASSES, readValue, tidyText } from '../assetClasses.js';
+import { fleetModel } from '../fleet/catalog.js';
 
 /**
  * Every field an asset of `cls` can carry, in form order. Classes declare
@@ -109,6 +110,25 @@ export function snapChoice(text, known) {
   if (!tidy) return '';
   const folded = tidy.toLowerCase();
   return known.find((value) => value.toLowerCase() === folded) ?? tidy;
+}
+
+const CATALOG_FILLS = ['powertrain', 'make', 'model', 'ratedKw'];
+
+/**
+ * The fields a fleet catalog model fills in on an asset of class `cls`:
+ * powertrain, make, model and rated power, where the class has that field
+ * and the catalog knows the value. Picking from the catalog means these
+ * are never typed.
+ */
+export function catalogFill(cls, catalogId) {
+  const model = catalogId ? fleetModel(catalogId) : null;
+  if (!model) return {};
+  const keys = new Set((ASSET_CLASSES[cls]?.fields || []).map((f) => f.key));
+  return Object.fromEntries(
+    CATALOG_FILLS.filter((key) => keys.has(key) && model[key] != null).map(
+      (key) => [key, model[key]],
+    ),
+  );
 }
 
 /** Show a stored value as text (form inputs, tables, CSV cells). */

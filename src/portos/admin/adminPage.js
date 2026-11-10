@@ -16,6 +16,7 @@ import {
   assetFromText,
   assetsFromRows,
   assetsToCsv,
+  catalogFill,
   choiceValues,
   classFields,
   classesByGroup,
@@ -366,7 +367,7 @@ function editorView() {
   return `<aside class="card editor" aria-label="Asset editor">
     <h2>${isNew ? `New ${esc(ASSET_CLASSES[cls].label.toLowerCase())}` : esc(asset.label || asset.id)}</h2>
     ${isNew ? '' : `<p class="meta">${esc(ASSET_CLASSES[cls].label)} · revision ${asset.rev} · last edit by ${esc(asset.updatedBy)}, ${esc(when(asset.updatedAt))}</p>`}
-    <form data-form="asset" novalidate>
+    <form data-form="asset" data-cls="${esc(cls)}" novalidate>
       ${fields
         .map(
           (f) => `<div class="field">
@@ -754,7 +755,28 @@ app.addEventListener('input', (event) => {
   }
 });
 
+/** Fill powertrain, make, model and rated power from the picked catalog model. */
+function applyCatalog(select) {
+  const form = select.form;
+  const cls = form?.dataset.cls || state.cls;
+  for (const [key, value] of Object.entries(catalogFill(cls, select.value))) {
+    const input = form.elements.namedItem(key);
+    if (!input) continue;
+    if (
+      input.tagName === 'SELECT' &&
+      ![...input.options].some((o) => o.value === String(value))
+    ) {
+      input.add(new Option(String(value), String(value)), input.options[1]);
+    }
+    input.value = String(value);
+  }
+}
+
 app.addEventListener('change', async (event) => {
+  if (event.target.name === 'catalogId') {
+    applyCatalog(event.target);
+    return;
+  }
   if (event.target.dataset?.choice) {
     const box = event.target.parentElement.querySelector('.choice-new');
     if (box) {

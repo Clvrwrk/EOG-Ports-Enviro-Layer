@@ -203,8 +203,8 @@ function encode(state) {
 
 test('production registry is exact, canonical, and rejects incomplete contracts', async () => {
   assert.equal(validateLayerStateRegistry(), true);
-  assert.equal(REGISTERED_LAYER_IDS.length, 37);
-  assert.equal(new Set(REGISTERED_LAYER_IDS).size, 37);
+  assert.equal(REGISTERED_LAYER_IDS.length, 38);
+  assert.equal(new Set(REGISTERED_LAYER_IDS).size, 38);
   assert.ok(REGISTERED_LAYER_IDS.includes('transit'));
   assert.deepEqual(REGISTERED_LAYER_IDS, [...REGISTERED_LAYER_IDS].sort());
   assert.deepEqual(LEGACY_LAYER_STATE_TOKENS, {
@@ -243,12 +243,12 @@ test('production registry is exact, canonical, and rejects incomplete contracts'
   for (const [id, token] of Object.entries(LEGACY_LAYER_STATE_TOKENS)) {
     assert.equal(LAYER_STATE_TOKEN_RESERVATIONS[id], token);
   }
-  assert.equal(nextLayerStateToken(), '01');
+  assert.equal(nextLayerStateToken(), '02');
   // The allocation rules below replay upstream's ledger, before this fork
-  // allocated '00' to port-emissions.
+  // allocated '00' to port-emissions and '01' to freight-footprint.
   const UPSTREAM = Object.fromEntries(
     Object.entries(LAYER_STATE_TOKEN_RESERVATIONS).filter(
-      ([id]) => id !== 'port-emissions',
+      ([id]) => id !== 'port-emissions' && id !== 'freight-footprint',
     ),
   );
   assert.equal(nextLayerStateToken(UPSTREAM), '00');

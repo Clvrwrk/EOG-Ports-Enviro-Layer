@@ -287,3 +287,16 @@ test('a spreadsheet with words in number columns is refused row by row', () => {
     plan.errors.join('\n'),
   );
 });
+
+test('a fleet catalog model fills powertrain, make, model and rating', async () => {
+  const { catalogFill } = await import('./adminModel.js');
+  const truck = catalogFill('drayage_truck', 'truck-battle-lnt-240');
+  assert.equal(truck.powertrain, 'electric');
+  assert.equal(truck.make, 'Battle');
+  assert.equal(truck.model, 'Motors LNT 240 kWh');
+  const rtg = catalogFill('rtg_crane', 'che-rtg-crane-diesel');
+  assert.equal(rtg.powertrain, 'diesel');
+  assert.equal(rtg.ratedKw, 450);
+  assert.deepEqual(catalogFill('rtg_crane', 'no-such-model'), {});
+  assert.deepEqual(catalogFill('berth', ''), {});
+});

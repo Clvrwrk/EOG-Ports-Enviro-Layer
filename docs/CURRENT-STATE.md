@@ -151,6 +151,30 @@ across the antimeridian, so they cannot use the strict ±180 check as-is, and
 `src/sources/adsbRecords.js` and `server/providers/common/geo.js` keep their own
 implementations.
 
+## Freight Footprint — November 10, 2026
+
+The Ports group has a second layer, **Freight Footprint** (`freight-footprint`,
+share token `01`). It draws Port of Hueneme imports end to end: ocean lanes
+from each origin port (great-circle routes with sea waypoints, Europe via
+Panama), drayage from the gate to the off-dock facilities POH names, and onward
+truck or rail links to regional markets. Cards give cargo and modeled
+emissions per origin, drop site and market, and a headline card at the port
+gives the totals by leg (ocean, at port, drayage, onward), by commodity, and a
+battery-electric drayage what-if.
+
+`src/emissions/freightFootprint.js` is the pure model; every input lives in
+`src/emissions/freightLanes.js`. Published: CY2024 volumes by commodity, top
+trading partners, produce origins and facility addresses (POH update to VCTC).
+Modeled and labeled: origin, drop-site and market shares, representative ships
+(the median-power ship per class from the Hueneme ship inventory, with assumed
+speeds, utilization and berth hours), truck payloads and circuity. The ocean
+and port legs use the EPA port inventory method (`ogvMethod.js`) and tug
+factors (`callEmissions.js`); trucks use 10.21 kg CO2/gal at 6.5 mpg with
+2010 certification limits as a NOx/PM floor; rail uses 470 ton-miles/gal and
+Tier 3 line-haul limits. `freightFootprint({ truckFactors })` is where the EV
+Planning fleet catalog plugs in. Liquid fertilizer, fish and offshore oil are
+left out (no published origins or no ocean leg).
+
 ## Port asset admin portal — November 10, 2026
 
 `/admin` (`admin.html`, `src/portos/admin/`) is where port staff keep the

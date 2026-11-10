@@ -461,6 +461,8 @@ export const VOICE_OFF_LAYERS = Object.freeze({
     'community observation layer; no room in the prompt budget',
   'port-emissions':
     'modeled port emissions layer; no room in the prompt budget',
+  'freight-footprint':
+    'modeled freight footprint layer; no room in the prompt budget',
 });
 
 const TYPE_NAMES = Object.freeze({

@@ -63,6 +63,8 @@ import { createMapSwitch } from './mapSwitch.js';
 import { TWIN_LAYERS, createTwinPanel } from './panel.js';
 import { TWIN_ENTITY_PREFIX, createTwinView } from './view.js';
 import { loadVesselInventory } from '../vessels/load.js';
+import { createEvPlanningSection } from '../fleet/twinSection.js';
+import { EV_ENTITY_PREFIX } from '../fleet/view.js';
 
 /** Simulated hours per real second while playing. */
 const PLAY_HOURS_PER_SECOND = 1;
@@ -76,6 +78,7 @@ const OWN_PREFIXES = [
   GRID_ENTITY_PREFIX,
   SITE_ENTITY_PREFIX,
   ASSET_ENTITY_PREFIX,
+  EV_ENTITY_PREFIX,
 ];
 const PLAN_ID = 'plan';
 const LINK_ID = 'link';
@@ -132,6 +135,7 @@ export function createPortTwin({
   let readings = new Map();
   let siteView = null;
   let assets = null; // port asset registry, once loaded
+  let evSection = null; // EV Planning section, while the twin runs
   let assetView = null;
   let mapSwitch = null;
   let usage = null;
@@ -459,6 +463,14 @@ export function createPortTwin({
     publishNames();
     handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
     handler.setInputAction(onClick, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+    evSection = createEvPlanningSection({
+      host: panel.evHost,
+      viewer,
+      dataSource,
+      requestRender,
+      onBackToPort: () =>
+        viewer.camera.flyTo({ ...view.cameraView(), duration: 3 }),
+    });
     lastTime = 0;
     raf = requestAnimationFrame(loop);
     // Meters and the site map arrive after the twin is up; skip them if it
@@ -515,6 +527,8 @@ export function createPortTwin({
     raf = null;
     handler?.destroy();
     handler = null;
+    evSection?.destroy();
+    evSection = null;
     usage?.destroy();
     usage = null;
     mapSwitch?.set(true);
