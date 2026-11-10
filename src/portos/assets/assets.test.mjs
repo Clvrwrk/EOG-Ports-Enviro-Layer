@@ -235,5 +235,18 @@ test('cards show readable fields, notes and sources', () => {
   assert.ok(!HUENEME_REGISTRY.assets.some((a) => a.craftType === 'pilot'));
   assert.equal(byId(HUENEME_REGISTRY, 'berth-4').label, 'Berth 4 (RoRo)');
   assert.equal(byId(HUENEME_REGISTRY, 'berth-8').zone, 'US Navy');
+  // Port staff: only Berths 1 and 2 have ship shore power.
+  assert.deepEqual(
+    HUENEME_REGISTRY.assets
+      .filter((a) => a.class === 'berth' && a.shorePower)
+      .map((a) => a.id),
+    ['berth-1', 'berth-2'],
+  );
+  assert.deepEqual(
+    HUENEME_REGISTRY.assets
+      .filter((a) => a.class === 'shore_power')
+      .map((a) => a.berthId),
+    ['berth-1', 'berth-2'],
+  );
   assert.ok(summary.Data.startsWith('Public sources only'));
 });

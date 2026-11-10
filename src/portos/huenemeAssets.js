@@ -103,7 +103,7 @@ export const BERTH_DETAILS = Object.freeze({
     label: 'Berth 3',
     source: `${PORT_FACTS}; use: ${PORT_STAFF}`,
     notes:
-      'Not used very often (port staff). The port also lists Berth 3 for fishing vessels; whether it has ship shore power is still to confirm.',
+      'Not used very often (port staff). No ship shore power: only Berths 1 and 2 have it (port staff). The port also lists Berth 3 for fishing vessels.',
   },
   'berth-4': {
     label: 'Berth 4 (RoRo)',

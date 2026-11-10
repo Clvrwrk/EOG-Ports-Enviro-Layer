@@ -381,7 +381,7 @@ function fleetAssets(
 const BERTHS = [
   ['berth-1', 'South', true],
   ['berth-2', 'South', true],
-  ['berth-3', 'South', true],
+  ['berth-3', 'South', false],
   ['berth-4', 'North', false],
   ['berth-5', 'North', false],
   ['berth-6', 'North', false],
@@ -426,7 +426,8 @@ export const HUENEME_REGISTRY = Object.freeze({
     },
     { id: 'charger-utr-01', class: 'charger', meterId: 'meter-che', kw: 50 },
     { id: 'charger-utr-02', class: 'charger', meterId: 'meter-che', kw: 50 },
-    ...['berth-1', 'berth-2', 'berth-3'].map((berthId, i) => ({
+    // Port staff: only Berths 1 and 2 have ship shore power.
+    ...['berth-1', 'berth-2'].map((berthId, i) => ({
       id: `shore-power-${i + 1}`,
       class: 'shore_power',
       meterId: 'meter-che',
