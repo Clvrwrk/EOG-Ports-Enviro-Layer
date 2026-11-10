@@ -7140,3 +7140,12 @@ the container healthy. Checks time out after 10 seconds, with a 30-second
 startup grace period and three consecutive failures before reporting unhealthy.
 This reports app HTTP availability, not individual provider health, and does not
 configure automatic restarts.
+
+## Hosting and deploys — November 10, 2026
+
+ports.zea.green runs from the Coolify application `eog-ports-enviro-layer`,
+which builds the `main` branch. A push webhook on this repository notifies
+Coolify's manual GitHub webhook endpoint, so every merge to `main` deploys on
+its own; no Redeploy click is needed. Pushes to other branches are ignored.
+Environment variables are read at runtime, so a change to them takes effect
+on the next deploy or restart.
