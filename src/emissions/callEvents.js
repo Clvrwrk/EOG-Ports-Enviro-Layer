@@ -180,14 +180,33 @@ export function berthStay(
   };
 }
 
+/** Metres from a point to the segment [[lon, lat], [lon, lat]]. */
+export function distanceToSegmentM(lon, lat, [[lon1, lat1], [lon2, lat2]]) {
+  // Local flat frame in metres around the point.
+  const k = M_PER_DEG_LAT * Math.cos((lat * Math.PI) / 180);
+  const ax = (lon1 - lon) * k;
+  const ay = (lat1 - lat) * M_PER_DEG_LAT;
+  const bx = (lon2 - lon) * k;
+  const by = (lat2 - lat) * M_PER_DEG_LAT;
+  const dx = bx - ax;
+  const dy = by - ay;
+  const len2 = dx * dx + dy * dy;
+  const f = len2 ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / len2)) : 0;
+  return Math.hypot(ax + f * dx, ay + f * dy);
+}
+
 /**
- * Nearest berth to a point, from [{ id, lon, lat, approximate? }], within
- * `maxM`. Returns { id, distanceM, approximate } or null.
+ * Nearest berth to a point, from [{ id, lon, lat, segment?, approximate? }],
+ * within `maxM`. A berth with a `segment` (its stretch of wharf face) is
+ * measured to that line, since a ship lies along the wharf, not at one point.
+ * Returns { id, distanceM, approximate } or null.
  */
 export function nearestBerth(lon, lat, berthPoints = [], { maxM = 100 } = {}) {
   let best = null;
   for (const b of berthPoints) {
-    const d = distanceM(lon, lat, b.lon, b.lat);
+    const d = b.segment
+      ? distanceToSegmentM(lon, lat, b.segment)
+      : distanceM(lon, lat, b.lon, b.lat);
     if (d <= maxM && (!best || d < best.distanceM))
       best = {
         id: b.id,

@@ -10,7 +10,12 @@ import {
   positionAt,
   reconstructCall,
 } from './callEvents.js';
-import { HUENEME_BERTH_POINTS, HUENEME_BERTH_USE } from './huenemeBerths.js';
+import {
+  HUENEME_BERTH_POINTS,
+  HUENEME_BERTH_USE,
+  HUENEME_PLANNED_SHORE_POWER_BERTHS,
+  HUENEME_SHORE_POWER_BERTHS,
+} from './huenemeBerths.js';
 import { PORT_OF_HUENEME } from './ports.js';
 
 const T0 = Date.parse('2023-06-12T00:00:00Z');
@@ -202,13 +207,19 @@ test('scenario: shore power and electric tugs cut the call total', () => {
   assert.equal(base.gridKwh, 0);
 });
 
-test('berth use notes cover berths 1-9 and mark the Navy berths', () => {
-  for (let n = 1; n <= 9; n++) assert.ok(HUENEME_BERTH_USE[`berth-${n}`]);
-  assert.equal(HUENEME_BERTH_USE['berth-4'].mainUse, 'ro-ro');
-  assert.equal(HUENEME_BERTH_USE['berth-5'].operator, 'shared');
-  assert.equal(HUENEME_BERTH_USE['berth-7'].operator, 'navy');
-  assert.equal(HUENEME_BERTH_USE['berth-1'].shorePower, true);
-  assert.equal(HUENEME_BERTH_USE['berth-3'].shorePower, false);
+test('berth use follows the June 2025 terminal plan', () => {
+  assert.equal(HUENEME_BERTH_USE['berth-1'].terminal, 'south');
+  assert.deepEqual(HUENEME_BERTH_USE['berth-4'].mainUse, ['ro-ro']);
+  assert.equal(HUENEME_BERTH_USE['berth-4'].shorePower, false);
+  assert.equal(HUENEME_BERTH_USE['navy-terminal'].terminal, 'navy');
+  assert.deepEqual(HUENEME_SHORE_POWER_BERTHS, ['berth-1', 'berth-2']);
+  assert.deepEqual(HUENEME_PLANNED_SHORE_POWER_BERTHS, ['berth-4', 'berth-5']);
+  // Berth 4 sits on the North Terminal face, about 85 m north of berth 2.
+  const b4 = HUENEME_BERTH_POINTS.find((b) => b.id === 'berth-4');
+  assert.equal(
+    nearestBerth(b4.lon, b4.lat - 0.0002, HUENEME_BERTH_POINTS).id,
+    'berth-4',
+  );
 });
 
 test('shore power only applies at a berth that has it', () => {
