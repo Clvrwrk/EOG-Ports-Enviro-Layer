@@ -1,0 +1,1 @@
+- Log the provider's status and short error code when typed AI chat fails upstream, so "Could not connect" can be traced in the server log. The provider's message is never logged.

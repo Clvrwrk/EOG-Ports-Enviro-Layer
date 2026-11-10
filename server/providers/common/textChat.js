@@ -19,16 +19,19 @@ const REJECTED_KEY_COOLDOWN_MS = 60_000;
 // account without credit with 429 insufficient_quota, which waiting won't fix.
 // A 403 is the key's project, region or permissions, so it cools down too but
 // does not blame the key. Only small error bodies are read.
-async function upstreamRefusal(response, signal) {
+async function upstreamRefusal(response, signal, provider) {
   const { status } = response;
-  if (status === 401) return 'API_KEY_REJECTED';
-  if (status === 403) return 'ACCESS_DENIED';
-  if (![400, 429].includes(status)) return null;
+  if (status === 401 || status === 403) {
+    logUpstreamError(provider, status);
+    return status === 401 ? 'API_KEY_REJECTED' : 'ACCESS_DENIED';
+  }
   let error;
   try {
     error = (await readResponseJsonCapped(response, 16 * 1024, signal))?.error;
   } catch {
     return null;
+  } finally {
+    logUpstreamError(provider, status, error);
   }
   if (
     status === 400 &&
@@ -39,6 +42,21 @@ async function upstreamRefusal(response, signal) {
   if (status === 429 && error?.code === 'insufficient_quota')
     return 'QUOTA_EXCEEDED';
   return null;
+}
+
+// Logs why the provider refused, so a generic "Could not connect" can be
+// traced in the server log. Only the status and the provider's short code,
+// type and parameter name are logged, never its message, which can carry
+// request ids and account details.
+const LOG_TOKEN = /^[A-Za-z0-9_.[\]-]{1,80}$/;
+function logUpstreamError(provider, status, error) {
+  const fields = ['code', 'type', 'param', 'status']
+    .map((name) => [name, error?.[name]])
+    .filter(([, value]) => LOG_TOKEN.test(String(value ?? '')))
+    .map(([name, value]) => `${name}=${value}`);
+  console.warn(
+    `[${provider}-chat] upstream HTTP ${status} ${fields.join(' ')}`.trim(),
+  );
 }
 
 // Pass through only a delay in whole seconds, capped at an hour.
@@ -170,7 +188,11 @@ export function createTextChatHandler({
       if (response.redirected || (response.url && response.url !== endpoint))
         throw new Error('Unexpected destination');
       if (!response.ok) {
-        const refusal = await upstreamRefusal(response, lifetime.signal);
+        const refusal = await upstreamRefusal(
+          response,
+          lifetime.signal,
+          provider,
+        );
         if (refusal) {
           void response.body?.cancel().catch(() => {});
           rejected = {
@@ -198,10 +220,18 @@ export function createTextChatHandler({
       lifetime.signal.throwIfAborted();
       usage = parseUsage(provider, data);
       const result = parse(data);
-      if (!result || JSON.stringify(result).includes(apiKey))
+      if (!result || JSON.stringify(result).includes(apiKey)) {
+        console.warn(`[${provider}-chat] unreadable upstream reply`);
         return reply(502, { error: FAILURE, usage });
+      }
       reply(200, { ...result, usage });
     } catch (error) {
+      if (!lifetime.signal.aborted && error?.code !== 'BODY_TOO_LARGE')
+        console.warn(
+          `[${provider}-chat] request failed: ${error?.name || 'Error'}${
+            error?.cause?.code ? ` ${error.cause.code}` : ''
+          }`,
+        );
       reply(
         error?.code === 'BODY_TOO_LARGE'
           ? 413
