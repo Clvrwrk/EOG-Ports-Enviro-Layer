@@ -567,6 +567,8 @@
       "src/portos/capex.js",
       "src/portos/fleetSim.js",
       "src/portos/hueneme.js",
+      "src/portos/huenemeAssets.js",
+      "src/portos/huenemeOsm.js",
       "src/portos/schedule.js",
       "src/portos/tariffs.js",
       "src/portos/touCalendar.js",
