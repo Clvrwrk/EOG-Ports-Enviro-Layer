@@ -38,6 +38,9 @@ const CSS = `
 .port-twin-card h3{margin:0 0 4px;font-size:13px}.port-twin-card table{border-collapse:collapse;width:100%}
 .port-twin-card td{padding:1px 0;vertical-align:top}.port-twin-card td:first-child{color:#9aa6b8;padding-right:8px}
 .port-twin-card button{position:absolute;top:4px;right:6px;background:none;border:0;color:#9aa6b8;cursor:pointer;font-size:14px}
+.port-twin-card .bars{display:flex;align-items:flex-end;gap:2px;height:50px;margin-top:6px}
+.port-twin-card .bars i{flex:1;background:#20e7f2;border-radius:1px 1px 0 0}
+.port-twin-card.over{border-color:#ff4d4d}
 `;
 
 const money = (v) => `$${Math.round(v).toLocaleString('en-US')}`;
@@ -90,6 +93,22 @@ function select(name, options, value, onChange) {
   return node;
 }
 
+/** Small bar chart of monthly kWh for a meter card; empty with no bars. */
+function monthBars(bars = []) {
+  if (!bars.length) return [];
+  const top = Math.max(1, ...bars.map((bar) => bar.kwh));
+  return el(
+    'div',
+    { class: 'bars', role: 'img', 'aria-label': 'Monthly kWh' },
+    ...bars.map((bar) =>
+      el('i', {
+        style: `height:${Math.max(2, Math.round((bar.kwh / top) * 48))}px`,
+        title: `${bar.label}: ${Math.round(bar.kwh).toLocaleString('en-US')} kWh`,
+      }),
+    ),
+  );
+}
+
 /**
  * @param {object} handlers
  * @param {(patch: object) => void} handlers.onDecision
@@ -127,6 +146,39 @@ export function createTwinPanel(
   );
   const now = el('table');
   const board = el('table');
+  const meterNote = el('p', { class: 'sub' }, 'Loading meters…');
+  const meterToggle = el(
+    'button',
+    {
+      onclick: () => {
+        meterToggle.textContent = handlers.onMetersToggle?.()
+          ? 'Hide meters'
+          : 'Show meters';
+      },
+    },
+    'Hide meters',
+  );
+  const meterBox = el(
+    'fieldset',
+    {},
+    el('legend', {}, 'Electricity meters'),
+    meterNote,
+    el(
+      'div',
+      { class: 'row' },
+      el(
+        'button',
+        {
+          onclick: (event) => {
+            const box = event.currentTarget.getBoundingClientRect();
+            handlers.onPortCard?.(box.right, box.top);
+          },
+        },
+        'Port total by end use',
+      ),
+      meterToggle,
+    ),
+  );
 
   const years = Object.keys(FLEET_PLAN).map((y) => [y, `${y} fleet plan`]);
   const decide = (key) => (value) =>
@@ -259,6 +311,7 @@ export function createTwinPanel(
       ),
     ),
     el('fieldset', {}, el('legend', {}, 'Year vs. today'), board),
+    meterBox,
     el(
       'p',
       { class: 'sub legend' },
@@ -349,6 +402,10 @@ export function createTwinPanel(
         }),
       );
     },
+    /** Describe the loaded meter registry under the meters heading. */
+    showMeters(registry) {
+      meterNote.textContent = `${registry.meters.length} service points${registry.sample ? ' (sample numbers, not real bills)' : registry.asOf ? `, bills to ${registry.asOf}` : ''}. Columns are sized by yearly kWh and coloured by end use; red means a scenario overloads that service. Click one for its data.`;
+    },
     showCard(data, x, y) {
       card?.remove();
       if (!data) {
@@ -371,10 +428,14 @@ export function createTwinPanel(
             el('tr', {}, el('td', {}, a), el('td', {}, b)),
           ),
         ),
+        monthBars(data.bars),
       );
+      if (data.over) card.classList.add('over');
       card.style.left = `${Math.min(x + 14, window.innerWidth - 320)}px`;
-      card.style.top = `${Math.min(y + 14, window.innerHeight - 260)}px`;
       document.body.append(card);
+      // Keep the whole card on screen, whatever its height.
+      const top = Math.min(y + 14, window.innerHeight - card.offsetHeight - 70);
+      card.style.top = `${Math.max(8, top)}px`;
     },
     destroy() {
       card?.remove();

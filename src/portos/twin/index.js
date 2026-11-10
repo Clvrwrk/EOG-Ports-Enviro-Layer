@@ -7,6 +7,13 @@
  * layer's data source and its panel to the page.
  */
 import * as Cesium from 'cesium';
+import { HUENEME_REGISTRY } from '../hueneme.js';
+import { allocateScenario, meterScenarioAt } from '../meters/allocate.js';
+import { loadMeterRegistry } from '../meters/load.js';
+import { dayProfile } from '../meters/profile.js';
+import { meterCard, portCard } from '../meters/registry.js';
+import { createUsageChart } from '../meters/usageChart.js';
+import { createMeterView } from '../meters/view.js';
 import { runScenario } from '../scenario.js';
 import { STEPS_PER_HOUR } from '../touCalendar.js';
 import {
@@ -29,6 +36,7 @@ const PLAY_HOURS_PER_SECOND = 1;
 export function createPortTwin({
   requestRender = () => {},
   layout = TWIN_LAYOUT,
+  loadMeters = loadMeterRegistry,
 } = {}) {
   let viewer = null;
   let view = null;
@@ -44,9 +52,36 @@ export function createPortTwin({
   let stepFloat = 0;
   let selected = null; // { target, x, y }
   let frame = null;
+  let meters = null; // registry, once loaded
+  let meterView = null;
+  let allocation = null;
+  let metersShown = true;
+  let usage = null;
+  let runCount = 0;
+
+  /** Send the scenario's loads to their meters and flag overloaded ones. */
+  function allocate() {
+    if (!meters || !result) return;
+    allocation = allocateScenario(result, meters, HUENEME_REGISTRY.specs);
+    const over = new Set();
+    for (const [id, entry] of allocation.byMeter)
+      if (entry.headroomKw != null && entry.headroomKw < 0) over.add(id);
+    meterView?.showOver(over);
+    runCount += 1;
+  }
 
   function cardFor(target) {
     if (!frame || !target) return null;
+    if (target.kind === 'port') return meters ? portCard(meters) : null;
+    if (target.kind === 'meter') {
+      const meter = meters?.meters.find((m) => m.id === target.meterId);
+      return meter
+        ? meterCard(meter, {
+            scenario: meterScenarioAt(allocation, meter.id, step),
+            sample: meters.sample,
+          })
+        : null;
+    }
     if (target.kind === 'ship') return shipCard(frame, result);
     if (target.kind === 'charger')
       return chargerCard(frame, target.index, result);
@@ -69,12 +104,15 @@ export function createPortTwin({
     panel.showFrame(frame);
     if (selected)
       panel.showCard(cardFor(selected.target), selected.x, selected.y);
+    if (usage && meters)
+      usage.show(dayProfile(meters, allocation, result, step), runCount);
     requestRender(reason);
   }
 
   function run() {
     result = runScenario(scenarioFromDecisions(decisions));
     if (!baseline) baseline = result;
+    allocate();
     panel.showScoreboard(scoreboard(result, baseline));
     render('port-twin-scenario');
   }
@@ -99,7 +137,10 @@ export function createPortTwin({
 
   function onClick(movement) {
     const picked = viewer.scene.pick(movement.position);
-    const target = view.identify(picked?.id?.id);
+    const meterId = meterView?.identify(picked?.id?.id);
+    const target = meterId
+      ? { kind: 'meter', meterId }
+      : view.identify(picked?.id?.id);
     if (!target) return;
     selected = { target, x: movement.position.x, y: movement.position.y };
     const rect = viewer.canvas.getBoundingClientRect();
@@ -132,6 +173,16 @@ export function createPortTwin({
           onWalk() {
             viewer.camera.flyTo({ ...view.cameraView(), duration: 3 });
           },
+          onPortCard(x, y) {
+            selected = { target: { kind: 'port' }, x, y };
+            panel.showCard(cardFor(selected.target), x, y);
+          },
+          onMetersToggle() {
+            metersShown = !metersShown;
+            meterView?.setVisible(metersShown);
+            requestRender('port-twin-meters');
+            return metersShown;
+          },
           onCardClose() {
             selected = null;
             panel.showCard(null);
@@ -151,6 +202,18 @@ export function createPortTwin({
       handler.setInputAction(onClick, Cesium.ScreenSpaceEventType.LEFT_CLICK);
       lastTime = 0;
       raf = requestAnimationFrame(loop);
+      // Meters arrive after the twin is up; skip them if it closed meanwhile.
+      const mountedOn = viewer;
+      Promise.resolve(loadMeters()).then((registry) => {
+        if (viewer !== mountedOn || !registry) return;
+        meters = registry;
+        meterView = createMeterView(dataSource, registry);
+        meterView.setVisible(metersShown);
+        panel.showMeters(registry);
+        usage = createUsageChart();
+        allocate();
+        render('port-twin-meters');
+      });
     },
     disable() {
       if (raf !== null) cancelAnimationFrame(raf);
@@ -159,6 +222,12 @@ export function createPortTwin({
       handler = null;
       panel?.destroy();
       panel = null;
+      meterView?.destroy();
+      meterView = null;
+      usage?.destroy();
+      usage = null;
+      meters = null;
+      allocation = null;
       view = null;
       viewer = null;
       playing = false;
@@ -167,5 +236,7 @@ export function createPortTwin({
     /** Current scenario result, for tests and the console. */
     getResult: () => result,
     getDecisions: () => ({ ...decisions }),
+    getMeters: () => meters,
+    getAllocation: () => allocation,
   };
 }
