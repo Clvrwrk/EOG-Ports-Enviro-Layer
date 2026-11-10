@@ -31,7 +31,7 @@ test('every class lists its required fields in `fields`, with known types', () =
   }
 });
 
-test('the Hueneme registry covers buildings, yards, gates, rail and harbor craft', () => {
+test('the Hueneme registry covers buildings, yards, gates, rail and tugs', () => {
   const groups = assetsByGroup(HUENEME_REGISTRY);
   for (const group of Object.keys(ASSET_GROUPS))
     assert.ok(groups[group].length > 0, `${group} has assets`);
@@ -43,7 +43,6 @@ test('the Hueneme registry covers buildings, yards, gates, rail and harbor craft
     'rail_spur',
     'locomotive',
     'tug',
-    'harbor_craft',
   ])
     assert.ok(classes.has(cls), `has a ${cls}`);
   // Every port-wide record says where it came from.
@@ -232,5 +231,9 @@ test('cards show readable fields, notes and sources', () => {
   assert.equal(tugRows['Engine tier'], 'Tier 3');
   const summary = Object.fromEntries(registryCard(HUENEME_REGISTRY).rows);
   assert.ok(summary['Tugs and harbor craft'].endsWith('records'));
+  // Port staff: Hueneme calls need no pilot, so the seed has no pilot boat.
+  assert.ok(!HUENEME_REGISTRY.assets.some((a) => a.craftType === 'pilot'));
+  assert.equal(byId(HUENEME_REGISTRY, 'berth-4').label, 'Berth 4 (RoRo)');
+  assert.equal(byId(HUENEME_REGISTRY, 'berth-8').zone, 'US Navy');
   assert.ok(summary.Data.startsWith('Public sources only'));
 });

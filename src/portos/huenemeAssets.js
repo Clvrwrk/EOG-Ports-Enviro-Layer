@@ -13,6 +13,7 @@
  */
 import { OSM_GEOMETRY } from './huenemeOsm.js';
 
+const PORT_STAFF = 'Port of Hueneme staff via Chris (2026-11-10)';
 const PORT_FACTS =
   'Port of Hueneme, About the Port: Port Facts (portofhueneme.org, read 2026-11-10)';
 const OSM = 'OpenStreetMap (ODbL 1.0), © OpenStreetMap contributors';
@@ -51,12 +52,6 @@ export const CRAFT_SPECS = Object.freeze({
     dieselGallonsPerKwh: 0.0666,
     source:
       'Assumed: load factor 0.31 for tug propulsion and 213 g/kWh fuel use, typical of harbor craft inventories; check against CARB commercial harbor craft data',
-  },
-  pilot_boat: {
-    label: 'Pilot boat',
-    loadFactor: 0.5,
-    dieselGallonsPerKwh: 0.0666,
-    source: 'Assumed until the boat and its engines are known',
   },
   switcher_locomotive: {
     label: 'Switcher locomotive',
@@ -106,42 +101,51 @@ export const BERTH_DETAILS = Object.freeze({
   },
   'berth-3': {
     label: 'Berth 3',
-    source: PORT_FACTS,
+    source: `${PORT_FACTS}; use: ${PORT_STAFF}`,
     notes:
-      'The port lists Berth 3 for fishing vessels; the workbook puts it with the South Terminal shore power berths. To confirm.',
+      'Not used very often (port staff). The port also lists Berth 3 for fishing vessels; whether it has ship shore power is still to confirm.',
   },
   'berth-4': {
-    label: 'Berth 4',
+    label: 'Berth 4 (RoRo)',
     wharf: 'Wharf 2',
     lengthM: Math.round(700 * FT_TO_M),
-    source: PORT_FACTS,
+    source: `${PORT_FACTS}; use: ${PORT_STAFF}`,
+    notes: 'Predominantly the RoRo (vehicle carrier) berth.',
   },
   'berth-5': {
-    label: 'Berth 5',
+    label: 'Berth 5 (shared Navy/port)',
+    zone: 'Joint Use',
+    operator: 'Shared: US Navy and Port of Hueneme',
     wharf: 'Wharf 2',
     lengthM: Math.round(700 * FT_TO_M),
-    source: PORT_FACTS,
+    source: `${PORT_FACTS}; use: ${PORT_STAFF}`,
   },
   'berth-6': {
-    label: 'Berth 6 (joint use)',
+    label: 'Berth 6 (shared Navy/port)',
+    zone: 'Joint Use',
+    operator: 'Shared: US Navy and Port of Hueneme',
     lengthM: Math.round(1000 * FT_TO_M),
-    source: PORT_FACTS,
+    source: `${PORT_FACTS}; use: ${PORT_STAFF}`,
   },
   'berth-7': {
-    label: 'Navy Wharf 4 (licensed)',
-    operator: 'Naval Base Ventura County',
-    source: PORT_FACTS,
-    notes: 'Navy wharves 4, 5 and 6 are used under a license agreement.',
+    label: 'Berth 7 (US Navy)',
+    zone: 'US Navy',
+    operator: 'US Navy (Naval Base Ventura County)',
+    source: `${PORT_FACTS}; use: ${PORT_STAFF}`,
+    notes:
+      'US Navy berth. The port fact sheet lists Navy wharves 4 to 6 under a license agreement.',
   },
   'berth-8': {
-    label: 'Navy Wharf 5 (licensed)',
-    operator: 'Naval Base Ventura County',
-    source: PORT_FACTS,
+    label: 'Berth 8 (US Navy)',
+    zone: 'US Navy',
+    operator: 'US Navy (Naval Base Ventura County)',
+    source: `${PORT_FACTS}; use: ${PORT_STAFF}`,
   },
   'berth-9': {
-    label: 'Navy Wharf 6 (licensed)',
-    operator: 'Naval Base Ventura County',
-    source: PORT_FACTS,
+    label: 'Berth 9 (US Navy)',
+    zone: 'US Navy',
+    operator: 'US Navy (Naval Base Ventura County)',
+    source: `${PORT_FACTS}; use: ${PORT_STAFF}`,
   },
 });
 
@@ -440,17 +444,5 @@ export const PORT_ASSETS = Object.freeze([
     source: 'American Navigation (AmNav) news item on Brusco tugs',
     notes:
       "Brusco's first ASD tug, built for Port Hueneme. Rating and current assignment to confirm.",
-  },
-  {
-    id: 'craft-pilot-boat',
-    class: 'harbor_craft',
-    craftType: 'pilot',
-    label: 'Pilot boat',
-    operator: 'Brusco Tug & Barge for the Port Hueneme Pilots Association',
-    powertrain: 'diesel',
-    specId: 'pilot_boat',
-    status: 'active',
-    source: `${PORT_FACTS}; Brusco Tug & Barge, Pilot Boat & Launch`,
-    notes: 'Boat name, engines and hours to confirm.',
   },
 ]);
