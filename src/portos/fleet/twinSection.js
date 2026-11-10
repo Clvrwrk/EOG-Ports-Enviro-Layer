@@ -1,7 +1,7 @@
 /**
  * The EV Planning section of the POH Twin panel: plan a battery-electric
  * drayage round trip from the port to a drop site and draw it on the globe,
- * coloured by battery charge, with the fleet's charging load at the port and
+ * coloured by battery charge, with the fleet's charging load where the trucks charge and
  * emissions against diesel.
  */
 import {
