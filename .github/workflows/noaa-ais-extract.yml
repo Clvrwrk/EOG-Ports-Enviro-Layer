@@ -1,0 +1,48 @@
+name: NOAA AIS extract
+
+# Cut NOAA MarineCadastre daily AIS files (public domain) down to a port's box
+# and keep the result as a run artifact, for scripts/ais/reconstruct-calls.mjs.
+# The download is large (about 300 MB a day), so it runs here, not on a laptop.
+
+on:
+  workflow_dispatch:
+    inputs:
+      days:
+        description: 'Days to fetch, space separated, as YYYY_MM_DD (data runs through 2024)'
+        required: true
+        default: '2023_06_11 2023_06_12 2023_06_13 2023_06_14 2023_06_15 2023_06_16 2023_06_17'
+      bbox:
+        description: 'minLon,minLat,maxLon,maxLat (default: Port of Hueneme and its pilot area)'
+        required: true
+        default: '-119.33,34.05,-119.15,34.20'
+
+permissions:
+  contents: read
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: Download and cut daily files
+        env:
+          DAYS: ${{ inputs.days }}
+          BBOX: ${{ inputs.bbox }}
+        run: |
+          mkdir -p out
+          for d in $DAYS; do
+            [[ "$d" =~ ^[0-9]{4}_[0-9]{2}_[0-9]{2}$ ]] || { echo "bad day: $d"; exit 1; }
+            y=${d%%_*}
+            curl -fsSL -o /tmp/ais.zip "https://coast.noaa.gov/htdata/CMSP/AISDataHandler/$y/AIS_$d.zip"
+            unzip -p /tmp/ais.zip | python3 tools/ais/extract_marinecadastre.py --bbox="$BBOX" | gzip -9 > "out/AIS_$d.csv.gz"
+            rm /tmp/ais.zip
+            echo "$d rows: $(zcat "out/AIS_$d.csv.gz" | wc -l)"
+          done
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: noaa-ais-extract
+          path: out/
+          retention-days: 30

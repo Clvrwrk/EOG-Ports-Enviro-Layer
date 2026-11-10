@@ -57,6 +57,7 @@ import { TWIN_LAYOUT } from './layout.js';
 import { createMapSwitch } from './mapSwitch.js';
 import { TWIN_LAYERS, createTwinPanel } from './panel.js';
 import { TWIN_ENTITY_PREFIX, createTwinView } from './view.js';
+import { loadVesselInventory } from '../vessels/load.js';
 
 /** Simulated hours per real second while playing. */
 const PLAY_HOURS_PER_SECOND = 1;
@@ -111,6 +112,7 @@ export function createPortTwin({
   let stepFloat = 0;
   let selected = null; // { target, x, y }
   let frame = null;
+  let vessels = null; // ship inventory, loaded once in the background
   let meters = null; // registry, once loaded
   let meterView = null;
   let allocation = null;
@@ -196,7 +198,7 @@ export function createPortTwin({
     if (target.kind === 'edge' || target.kind === 'node')
       return network ? networkCard(network, flows, meters, target) : null;
     if (target.kind === 'structure') return structureCard(target.item);
-    if (target.kind === 'ship') return shipCard(frame, result);
+    if (target.kind === 'ship') return shipCard(frame, result, vessels);
     if (target.kind === 'charger')
       return chargerCard(frame, target.index, result);
     if (target.kind === 'crane') {
@@ -498,6 +500,10 @@ export function createPortTwin({
     enable(nextViewer, nextDataSource) {
       viewer = nextViewer;
       dataSource = nextDataSource;
+      if (!vessels)
+        loadVesselInventory().then((inventory) => {
+          vessels = inventory;
+        });
       panel = createTwinPanel(
         {
           onActive(on) {
