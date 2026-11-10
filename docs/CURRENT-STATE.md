@@ -160,17 +160,20 @@ asset registry the scenario builder and twin run on. It lists every class in
 Excel `.xlsx` (read in the browser by `readXlsx`, no dependency), exports CSV,
 and shows a field-by-field change history per asset and port-wide.
 `server/portos/adminApi.js` mounts `/api/portos/admin` on the Vite server;
-`server/portos/adminStore.js` keeps the registry, history and sessions in one
+`server/portos/adminStore.js` keeps the registry and history in one
 `node:sqlite` file under `PORTOS_DATA_DIR` (default `.gev-data/portos`,
 git-ignored), seeded from `HUENEME_REGISTRY` on first open. Every write is
 checked with `validateRegistry` against the whole registry before it commits
 (a broken reference or a delete that would orphan other assets is refused),
 and a save carries the asset's `rev` so a stale edit is refused rather than
-overwriting someone else's. Sign-in is one staff password
-(`PORTOS_ADMIN_PASSWORD`, 8+ characters; unset keeps the portal locked) plus
-the person's name; sessions are random tokens in an HttpOnly SameSite=Strict
-cookie, writes also need an `X-Portos-Admin: 1` header, and failed sign-ins
-are throttled per IP. `src/portos/admin/registrySource.js` lets `/scenarios`
+overwriting someone else's. There are no passwords: Cloudflare Access guards
+`/admin` and `/api/portos/admin` and signs staff in with an emailed one-time
+code or link; `server/portos/cfAccess.js` checks the `Cf-Access-Jwt-Assertion`
+token against the team's keys and audience (`CF_ACCESS_TEAM_DOMAIN`,
+`CF_ACCESS_AUD`; unset keeps the portal locked), and only the staff domains in
+`PORTOS_ADMIN_EMAILS` (default @cleverwork.io, @zeroemissionadvisors.com,
+@portofh.org) get in. The email goes in the history. Writes also need an
+`X-Portos-Admin: 1` header. `src/portos/admin/registrySource.js` lets `/scenarios`
 and the twin run on the edited registry when the browser is signed in
 (`fetchAdminRegistry`), and `fleetFromRegistry` sets the builder's equipment
 counts from active units (hybrids count as electric). Anonymous visitors keep

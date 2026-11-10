@@ -147,22 +147,14 @@ function signInView() {
   if (s && !s.configured)
     return `<div class="card signin">
       <h2>The admin portal is locked</h2>
-      <p class="notice">${
-        s.tooShort
-          ? 'The staff password is shorter than 8 characters, so sign-in is turned off.'
-          : 'No staff password is set on this server yet.'
-      } An administrator sets <code>PORTOS_ADMIN_PASSWORD</code> (8+ characters) in the server's environment, and <code>PORTOS_DATA_DIR</code> to a persistent folder, then restarts the app.</p>
+      <p class="notice">Staff sign-in runs through Cloudflare Access, and it is not connected on this server yet. An administrator puts <code>/admin</code> and <code>/api/portos/admin</code> behind a Cloudflare Access application and sets <code>CF_ACCESS_TEAM_DOMAIN</code> and <code>CF_ACCESS_AUD</code> in the server's environment.</p>
     </div>`;
-  return `<form class="card signin" data-form="signin">
+  return `<div class="card signin">
     <h2>Staff sign-in</h2>
-    <p class="notice">Your name goes on every change you make, in the asset history.</p>
-    <label for="si-name">Your name</label>
-    <input type="text" id="si-name" name="name" autocomplete="name" required maxlength="60" />
-    <label for="si-pass">Staff password</label>
-    <input type="password" id="si-pass" name="password" autocomplete="current-password" required />
+    <p class="notice">Sign-in uses a one-time code or link sent to your work email; there is no password. Your email goes on every change you make, in the asset history.</p>
     ${state.notice ? `<p class="notice ${state.notice.tone}" role="alert">${esc(state.notice.text)}</p>` : ''}
-    <button class="btn primary" type="submit" ${state.busy ? 'disabled' : ''}>Sign in</button>
-  </form>`;
+    <a class="btn primary" href="/admin">Sign in with your email</a>
+  </div>`;
 }
 
 function navView() {
@@ -628,26 +620,7 @@ async function confirmImport() {
 app.addEventListener('submit', async (event) => {
   event.preventDefault();
   const form = event.target;
-  if (form.dataset.form === 'signin') {
-    // Read before render(): rendering rebuilds the form and empties it.
-    const values = {
-      name: document.getElementById('si-name').value,
-      password: document.getElementById('si-pass').value,
-    };
-    state.busy = true;
-    say('');
-    render();
-    try {
-      const result = await api('/session', { method: 'POST', body: values });
-      state.session = { ...state.session, ...result };
-      await loadRegistry();
-    } catch (error) {
-      say(error.message, 'bad');
-    } finally {
-      state.busy = false;
-      render();
-    }
-  } else if (form.dataset.form === 'asset') saveAsset(form);
+  if (form.dataset.form === 'asset') saveAsset(form);
 });
 
 app.addEventListener('click', async (event) => {
@@ -667,10 +640,10 @@ app.addEventListener('click', async (event) => {
   if (target.matches('tr[data-id]')) return openAsset(target.dataset.id);
   switch (target.dataset.action) {
     case 'signout':
-      await api('/session', { method: 'DELETE' }).catch(() => {});
-      state.session = { ...state.session, signedIn: false, name: null };
-      state.registry = null;
-      return render();
+      // Ends the Cloudflare Access session for this site.
+      window.location.href =
+        state.session?.logoutUrl || '/cdn-cgi/access/logout';
+      return;
     case 'new':
       Object.assign(state, { creating: true, selectedId: null, problems: [] });
       render();

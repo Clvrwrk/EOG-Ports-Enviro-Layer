@@ -3,14 +3,15 @@ import { EventEmitter } from 'node:events';
 import test from 'node:test';
 import { validateRegistry } from '../../src/portos/assetClasses.js';
 import { HUENEME_REGISTRY } from '../../src/portos/hueneme.js';
-import {
-  adminSettings,
-  createAdminHandler,
-  passwordMatches,
-} from './adminApi.js';
+import { adminSettings, createAdminHandler, emailAllowed } from './adminApi.js';
 import { openAdminStore } from './adminStore.js';
+import { accessFixture } from './cfAccess.fixture.mjs';
 
-const PASSWORD = 'harbor-staff-2026';
+const fixture = accessFixture();
+const ENV = {
+  CF_ACCESS_TEAM_DOMAIN: fixture.teamDomain,
+  CF_ACCESS_AUD: fixture.aud,
+};
 
 function memoryStore(now = () => 1_000) {
   return openAdminStore({
@@ -24,12 +25,12 @@ function memoryStore(now = () => 1_000) {
 /** Call the handler like Node's HTTP server would and collect the answer. */
 async function call(
   handle,
-  { method = 'GET', url, body, cookie, headers = {} },
+  { method = 'GET', url, body, cookie, headers = {}, socket },
 ) {
   const req = new EventEmitter();
   req.method = method;
   req.url = url;
-  req.socket = { remoteAddress: '10.0.0.1' };
+  req.socket = socket || { remoteAddress: '10.0.0.1' };
   req.headers = {
     ...(cookie ? { cookie } : {}),
     ...(method !== 'GET' ? { 'x-portos-admin': '1' } : {}),
@@ -52,7 +53,8 @@ async function call(
   };
   const finished = new Promise((resolve) => (res.done = resolve));
   handle(req, res);
-  queueMicrotask(() => {
+  // After the handler's async sign-in check, as a real request body would.
+  setImmediate(() => {
     if (body !== undefined) req.emit('data', Buffer.from(JSON.stringify(body)));
     req.emit('end');
   });
@@ -66,23 +68,20 @@ async function call(
   };
 }
 
-function handler(env = { PORTOS_ADMIN_PASSWORD: PASSWORD }) {
+function handler(env = ENV) {
   const store = memoryStore();
+  const settings = adminSettings(env);
   return createAdminHandler({
-    settings: adminSettings(env),
+    settings,
+    access: fixture.verifier(settings),
     openStore: () => store,
   });
 }
 
-async function signIn(handle, name = 'Dana') {
-  const r = await call(handle, {
-    method: 'POST',
-    url: '/session',
-    body: { name, password: PASSWORD },
-  });
-  assert.equal(r.status, 200);
-  return r.cookie;
-}
+/** Headers Cloudflare Access adds for a signed-in person. */
+const as = (email, claims) => ({
+  'cf-access-jwt-assertion': fixture.token({ email, ...claims }),
+});
 
 test('store seeds the registry once, with seed history', () => {
   const store = memoryStore();
@@ -200,79 +199,58 @@ test('store rejects unsafe ids', () => {
   );
 });
 
-test('sessions expire', () => {
-  let clock = 0;
-  const store = memoryStore(() => clock);
-  const { token } = store.createSession('Dana');
-  assert.deepEqual(store.checkSession(token), { name: 'Dana' });
-  clock = 13 * 60 * 60 * 1000;
-  assert.equal(store.checkSession(token), null);
-});
-
-test('password check needs the exact password and 8+ characters', () => {
-  assert.ok(passwordMatches(PASSWORD, PASSWORD));
-  assert.ok(!passwordMatches('harbor-staff-2027', PASSWORD));
-  assert.ok(!passwordMatches('', null));
-  assert.equal(
-    adminSettings({ PORTOS_ADMIN_PASSWORD: 'short' }).password,
-    null,
-  );
-  assert.equal(
-    adminSettings({ PORTOS_ADMIN_PASSWORD: 'short' }).tooShort,
-    true,
-  );
-});
-
-test('portal stays locked without a password', async () => {
+test('portal stays locked without Cloudflare Access settings', async () => {
   const handle = handler({});
   const session = await call(handle, { url: '/session' });
   assert.equal(session.status, 200);
   assert.equal(session.json.configured, false);
-  const registry = await call(handle, { url: '/registry' });
+  const registry = await call(handle, {
+    url: '/registry',
+    headers: as('dana@portofh.org'),
+  });
   assert.equal(registry.status, 503);
 });
 
-test('API needs sign-in, the write header, and records the signed-in name', async () => {
+test('API needs an Access token, the write header, and records the email', async () => {
   const handle = handler();
   assert.equal((await call(handle, { url: '/registry' })).status, 401);
-  const wrong = await call(handle, {
-    method: 'POST',
-    url: '/session',
-    body: { name: 'Dana', password: 'nope-nope-nope' },
-  });
-  assert.equal(wrong.status, 401);
+  const headers = as('dana@portofh.org');
+  const session = await call(handle, { url: '/session', headers });
+  assert.deepEqual(
+    [session.json.configured, session.json.signedIn, session.json.name],
+    [true, true, 'dana@portofh.org'],
+  );
+  assert.equal(session.json.logoutUrl, '/cdn-cgi/access/logout');
 
-  const cookie = await signIn(handle);
-  const { json } = await call(handle, { url: '/registry', cookie });
+  const { json } = await call(handle, { url: '/registry', headers });
   assert.equal(json.portId, HUENEME_REGISTRY.portId);
   const gate = { id: 'gate-test', class: 'gate', lanes: 2 };
   const missingHeader = await call(handle, {
     method: 'POST',
     url: '/assets',
-    cookie,
     body: { asset: gate },
-    headers: { 'x-portos-admin': '' },
+    headers: { ...headers, 'x-portos-admin': '' },
   });
   assert.equal(missingHeader.status, 403);
   const created = await call(handle, {
     method: 'POST',
     url: '/assets',
-    cookie,
     body: { asset: gate },
+    headers,
   });
   assert.equal(created.status, 201, JSON.stringify(created.json));
-  assert.equal(created.json.asset.updatedBy, 'Dana');
+  assert.equal(created.json.asset.updatedBy, 'dana@portofh.org');
   const history = await call(handle, {
     url: '/history?assetId=gate-test',
-    cookie,
+    headers,
   });
   assert.equal(history.json.entries[0].action, 'create');
 
   const updated = await call(handle, {
     method: 'PUT',
     url: '/assets/gate-test',
-    cookie,
     body: { asset: { ...gate, lanes: 3 }, rev: created.json.asset.rev },
+    headers,
   });
   assert.equal(updated.status, 200);
   assert.equal(updated.json.asset.lanes, 3);
@@ -280,40 +258,91 @@ test('API needs sign-in, the write header, and records the signed-in name', asyn
   const removed = await call(handle, {
     method: 'DELETE',
     url: `/assets/gate-test?rev=${updated.json.asset.rev}`,
-    cookie,
+    headers,
   });
   assert.equal(removed.status, 200);
-
-  const out = await call(handle, { method: 'DELETE', url: '/session', cookie });
-  assert.match(out.setCookie, /Max-Age=0/);
-  assert.equal((await call(handle, { url: '/registry', cookie })).status, 401);
 });
 
-test('session cookie is HttpOnly, SameSite=Strict, and Secure behind https', async () => {
+test('the Access cookie works too, and forged or stale tokens do not', async () => {
   const handle = handler();
-  const r = await call(handle, {
-    method: 'POST',
-    url: '/session',
-    body: { name: 'Dana', password: PASSWORD },
-    headers: { 'x-forwarded-proto': 'https' },
-  });
-  assert.match(r.setCookie, /HttpOnly/);
-  assert.match(r.setCookie, /SameSite=Strict/);
-  assert.match(r.setCookie, /Secure/);
+  const cookie = `CF_Authorization=${fixture.token({ email: 'dana@portofh.org' })}`;
+  assert.equal((await call(handle, { url: '/registry', cookie })).status, 200);
+  const cases = {
+    expired: as('dana@portofh.org', { exp: 1 }),
+    otherAudience: as('dana@portofh.org', { aud: ['someone-else'] }),
+    otherIssuer: as('dana@portofh.org', {
+      iss: 'https://evil.cloudflareaccess.com',
+    }),
+    noEmail: as(''),
+    forged: {
+      'cf-access-jwt-assertion': fixture.forged({ email: 'dana@portofh.org' }),
+    },
+    garbage: { 'cf-access-jwt-assertion': 'not.a.jwt' },
+  };
+  for (const [name, headers] of Object.entries(cases))
+    assert.equal(
+      (await call(handle, { url: '/registry', headers })).status,
+      401,
+      name,
+    );
 });
 
-test('repeated wrong passwords are throttled', async () => {
-  const handle = handler();
-  for (let i = 0; i < 10; i += 1)
-    await call(handle, {
-      method: 'POST',
-      url: '/session',
-      body: { name: 'X', password: 'wrong-wrong' },
-    });
-  const r = await call(handle, {
-    method: 'POST',
+test('PORTOS_ADMIN_EMAILS narrows who may edit', async () => {
+  assert.ok(emailAllowed('a@portofh.org', []));
+  assert.ok(emailAllowed('A@PortOfH.org', ['@portofh.org']));
+  assert.ok(emailAllowed('b@x.com', ['b@x.com', '@portofh.org']));
+  assert.ok(!emailAllowed('b@x.com', ['@portofh.org']));
+  const handle = handler({ ...ENV, PORTOS_ADMIN_EMAILS: '@portofh.org' });
+  assert.equal(
+    (await call(handle, { url: '/registry', headers: as('dana@portofh.org') }))
+      .status,
+    200,
+  );
+  assert.equal(
+    (await call(handle, { url: '/registry', headers: as('eve@elsewhere.com') }))
+      .status,
+    401,
+  );
+});
+
+test('the local dev email only applies to direct requests from this machine', async () => {
+  const handle = handler({ PORTOS_ADMIN_DEV_EMAIL: 'dev@localhost' });
+  const remote = await call(handle, { url: '/session' });
+  assert.equal(remote.json.signedIn, false);
+  const local = await call(handle, {
     url: '/session',
-    body: { name: 'Dana', password: PASSWORD },
+    socket: { remoteAddress: '127.0.0.1' },
   });
-  assert.equal(r.status, 429);
+  assert.equal(local.json.name, 'dev@localhost');
+  const proxied = await call(handle, {
+    url: '/session',
+    socket: { remoteAddress: '127.0.0.1' },
+    headers: { 'x-forwarded-for': '203.0.113.9' },
+  });
+  assert.equal(proxied.json.signedIn, false);
+});
+
+test('without PORTOS_ADMIN_EMAILS only the staff domains get in', async () => {
+  assert.deepEqual(adminSettings({}).allowed, [
+    '@cleverwork.io',
+    '@zeroemissionadvisors.com',
+    '@portofh.org',
+  ]);
+  const handle = handler();
+  for (const email of [
+    'a@cleverwork.io',
+    'b@zeroemissionadvisors.com',
+    'c@portofh.org',
+  ])
+    assert.equal(
+      (await call(handle, { url: '/registry', headers: as(email) })).status,
+      200,
+      email,
+    );
+  for (const email of ['eve@gmail.com', 'eve@cleverwork.io.evil.com'])
+    assert.equal(
+      (await call(handle, { url: '/registry', headers: as(email) })).status,
+      401,
+      email,
+    );
 });

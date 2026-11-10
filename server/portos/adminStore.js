@@ -2,7 +2,7 @@
  * Server-side store for the port asset admin portal (/admin).
  *
  * One SQLite file holds the edited asset registry, a change history row for
- * every create, update and delete, and staff sign-in sessions. The file lives
+ * every create, update and delete. The file lives
  * in a data directory outside the repository (PORTOS_DATA_DIR, a Coolify
  * volume in production), so records port staff enter never reach the public
  * repo. On first open the registry is seeded from the code's seed registry.
@@ -12,11 +12,9 @@
  * is committed, and a save that names a stale `rev` is refused so two staff
  * editing the same asset cannot silently overwrite each other.
  */
-import { createHash, randomBytes } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 
-const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 const MAX_HISTORY = 500;
 
 let sqlite = null;
@@ -46,9 +44,6 @@ export class AdminError extends Error {
     this.details = details;
   }
 }
-
-const hashToken = (token) =>
-  createHash('sha256').update(String(token)).digest('hex');
 
 /** Strip bookkeeping keys a client may echo back; keep the asset's own data. */
 export function cleanAsset(asset) {
@@ -110,11 +105,6 @@ export function openAdminStore({ dir, seed, validate, now = Date.now }) {
       by TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS history_asset ON history (port_id, asset_id, seq);
-    CREATE TABLE IF NOT EXISTS sessions (
-      token_hash TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      expires INTEGER NOT NULL
-    );
   `);
 
   const portId = seed.portId;
@@ -142,14 +132,6 @@ export function openAdminStore({ dir, seed, validate, now = Date.now }) {
     historyAll: db.prepare(
       'SELECT seq, asset_id, action, before, after, at, by FROM history WHERE port_id = ? ORDER BY seq DESC LIMIT ?',
     ),
-    sessionAdd: db.prepare(
-      'INSERT INTO sessions (token_hash, name, expires) VALUES (?, ?, ?)',
-    ),
-    sessionGet: db.prepare(
-      'SELECT name, expires FROM sessions WHERE token_hash = ?',
-    ),
-    sessionDrop: db.prepare('DELETE FROM sessions WHERE token_hash = ?'),
-    sessionPrune: db.prepare('DELETE FROM sessions WHERE expires < ?'),
   };
 
   const transaction = (fn) => {
@@ -344,26 +326,6 @@ export function openAdminStore({ dir, seed, validate, now = Date.now }) {
     }));
   }
 
-  function createSession(name) {
-    const token = randomBytes(32).toString('base64url');
-    q.sessionPrune.run(now());
-    q.sessionAdd.run(hashToken(token), name, now() + SESSION_TTL_MS);
-    return { token, maxAgeSeconds: SESSION_TTL_MS / 1000 };
-  }
-
-  function checkSession(token) {
-    if (!token) return null;
-    const row = q.sessionGet.get(hashToken(token));
-    if (!row) return null;
-    if (row.expires < now()) {
-      q.sessionDrop.run(hashToken(token));
-      return null;
-    }
-    return { name: row.name };
-  }
-
-  const endSession = (token) => token && q.sessionDrop.run(hashToken(token));
-
   return {
     portId,
     assets,
@@ -372,9 +334,6 @@ export function openAdminStore({ dir, seed, validate, now = Date.now }) {
     deleteAsset,
     importAssets,
     history,
-    createSession,
-    checkSession,
-    endSession,
     close: () => db.close(),
   };
 }
