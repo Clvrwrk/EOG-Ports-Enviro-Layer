@@ -7,6 +7,7 @@
  *
  * Pure: no Cesium, no DOM.
  */
+import { STAX, berthStateAt } from '../atBerth.js';
 import { DEFAULT_SCENARIO } from '../scenario.js';
 import { FACTORS, SPECS } from '../hueneme.js';
 import { STEPS_PER_HOUR } from '../touCalendar.js';
@@ -24,6 +25,7 @@ export const DEFAULT_DECISIONS = Object.freeze({
   charging: 'asap', // key of CHARGING_STRATEGIES
   battery: 'none', // 'none' | '1mwh'
   shorePower: false,
+  stax: true,
 });
 
 const BATTERY_1MWH = Object.freeze({
@@ -43,6 +45,7 @@ export function applyDecisions(scenario, patch = {}) {
   if ('year' in patch) next.year = patch.year;
   if ('charging' in patch) next.strategy = patch.charging;
   if ('shorePower' in patch) next.shorePower = Boolean(patch.shorePower);
+  if ('stax' in patch) next.stax = Boolean(patch.stax);
   if (patch.utrs === 'plan') delete next.fleet.utr;
   if (patch.utrs === 'diesel')
     next.fleet.utr = { diesel: UTR_UNITS, electric: 0, chargers: 0 };
@@ -93,6 +96,7 @@ export function decisionsFromScenario(scenario) {
         ? '1mwh'
         : 'custom',
     shorePower: Boolean(scenario.shorePower),
+    stax: scenario.stax !== false,
   };
 }
 
@@ -168,12 +172,20 @@ export function twinFrame(result, step) {
     reeferCalls(result).find((call) => call.start <= at && at < call.end) ??
     null;
   const gallonsPerHour = result.dieselGallons[at] / DT;
+  const berth =
+    ship && result.atBerth
+      ? berthStateAt(result.atBerth.current, ship.berthId, at)
+      : null;
   return {
     step: at,
     time: result.calendar[at],
     period: result.periods[at],
     ship,
     shorePowerKw: ship && result.shoreKw ? result.shoreKw[at] : 0,
+    // How the ship's exhaust is handled now: 'shore-power', 'stax' or
+    // 'none' (engines to air, including hook-up and release hours).
+    exhaust: berth?.controlled ? berth.call.method : ship ? 'none' : null,
+    berthCall: berth?.call ?? null,
     cranes: fleetUnits(result, 'harbor_crane', at),
     utrs: fleetUnits(result, 'utr', at),
     reachStackers: fleetUnits(result, 'reach_stacker', at),
@@ -273,6 +285,49 @@ export function chargerCard(frame, index, result) {
   };
 }
 
+const EXHAUST_TEXT = {
+  'shore-power': 'Engines off, on shore power',
+  stax: 'Captured by the STAX barge',
+  none: 'Engines exhausting to air',
+};
+
+/** At-berth exhaust and emission rows for the ship card. */
+function atBerthRows(frame, result) {
+  const call = frame.berthCall;
+  if (!call) return [];
+  const hours = (call.end - call.start) * DT;
+  const auxNoxKgHr =
+    (result.atBerth.current.factors.aux.nox * call.auxKw) / 1000;
+  const staxNoxKgHr =
+    (result.atBerth.current.factors.auxStax.nox * call.auxKw) / 1000;
+  const nowKgHr =
+    frame.exhaust === 'shore-power'
+      ? 0
+      : frame.exhaust === 'stax'
+        ? staxNoxKgHr
+        : auxNoxKgHr;
+  const rows = [
+    ['Exhaust now', EXHAUST_TEXT[frame.exhaust] ?? 'Engines exhausting to air'],
+    [
+      'Hotel load',
+      `${n0(call.auxKw)} kW engines + ${n0(call.boilerKw)} kW boiler`,
+    ],
+    ['Engine NOx now', `${n1(nowKgHr)} kg/hr`],
+    [
+      'This call',
+      `${n1(call.grams.nox / 1000)} kg NOx, ${n1(call.grams.dpm)} g diesel PM over ${n0(hours)} h`,
+    ],
+  ];
+  if (call.method === 'stax')
+    rows.push([
+      'STAX',
+      `${call.bargeId}, ${n0((call.controlEnd - call.controlStart) * DT)} h treated; ${Math.round(STAX.capture.nox * 100)}% NOx and ${Math.round(STAX.capture.pm * 100)}% PM captured`,
+    ]);
+  else if (result.scenario.stax && call.method === 'none')
+    rows.push(['STAX', 'No barge free, or not a STAX berth or ship type']);
+  return rows;
+}
+
 /** Data card for the ship at the berth. */
 export function shipCard(frame, result) {
   const call = frame.ship;
@@ -292,11 +347,51 @@ export function shipCard(frame, result) {
       ['Crew', call.template],
       [
         'Shore power',
-        result.scenario.shorePower
+        frame.exhaust === 'shore-power'
           ? `${n0(frame.shorePowerKw)} kW now`
-          : 'Off (ship runs its engines)',
+          : result.scenario.shorePower
+            ? 'Not working at this berth this year'
+            : 'Off',
       ],
+      ...atBerthRows(frame, result),
       ['Schedule', 'Synthetic, from the workbook call profile'],
+    ],
+  };
+}
+
+/** Data card for the STAX barge alongside the ship. */
+export function staxCard(frame, result) {
+  const a = result.atBerth;
+  const t = a.current.totals;
+  const call = frame.berthCall;
+  return {
+    title: `STAX emissions capture barge${call?.bargeId ? ` · ${call.bargeId}` : ''}`,
+    rows: [
+      [
+        'Treating',
+        call ? `${call.type} call ${call.id} at ${call.berthId}` : 'No ship',
+      ],
+      [
+        'Captures',
+        `${Math.round(STAX.capture.pm * 100)}% of PM, ${Math.round(STAX.capture.nox * 100)}% of NOx from the auxiliary engines (CO2 is not captured)`,
+      ],
+      [
+        'Own power',
+        `Up to ${n0(STAX.bargeGeneratorKw)} kW generator on renewable diesel`,
+      ],
+      [
+        'This year',
+        `${t.calls.stax} calls, ${n0(t.controlledHours.stax)} h treated, ${n0(t.bargeGallons)} gal renewable diesel`,
+      ],
+      [
+        'Saves this year',
+        `${n1(a.staxSavedTonnes.nox)} t NOx, ${n0(a.staxSavedTonnes.dpm * 1000)} kg diesel PM`,
+      ],
+      [
+        'Barges',
+        `${result.scenario.staxBarges} (one per terminal at Hueneme today)`,
+      ],
+      ['Source', 'CARB EO G-24-054; Port of Hueneme, July 2025'],
     ],
   };
 }
@@ -340,6 +435,13 @@ export function scoreboard(result, baseline) {
       label: 'Equipment CO2 / yr',
       value: t.co2Tonnes,
       base: b.co2Tonnes,
+      unit: 't',
+    },
+    {
+      id: 'shipNox',
+      label: 'Ship NOx at berth / yr',
+      value: t.shipNoxTonnes ?? 0,
+      base: b.shipNoxTonnes ?? 0,
       unit: 't',
     },
   ];

@@ -23,6 +23,7 @@ import {
   nextCallStart,
   scoreboard,
   shipCard,
+  staxCard,
   twinFrame,
   unitCard,
 } from './frame.js';
@@ -74,6 +75,7 @@ export function createPortTwin({
   function cardFor(target) {
     if (!frame || !target) return null;
     if (target.kind === 'ship') return shipCard(frame, result);
+    if (target.kind === 'stax') return staxCard(frame, result);
     if (target.kind === 'charger')
       return chargerCard(frame, target.index, result);
     if (target.kind === 'crane') {

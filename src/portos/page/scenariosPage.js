@@ -7,6 +7,11 @@
  */
 import './scenarios.css';
 import { lineChart, stackedBars } from './charts.js';
+import {
+  STAX,
+  SHORE_POWER_IN_SERVICE,
+  shorePowerInService,
+} from '../atBerth.js';
 import { CHARGING_STRATEGIES } from '../fleetSim.js';
 import { FACTORS } from '../hueneme.js';
 import { rollup } from '../rollups.js';
@@ -90,7 +95,7 @@ app.innerHTML = `
   <header>
     <div>
       <h1>Port of Hueneme scenario builder</h1>
-      <p class="sub">Set the fleet, the rate, charging, a battery and shore power. Save scenarios, compare them, and play any of them on the 3D port.</p>
+      <p class="sub">Set the fleet, the rate, charging, a battery, shore power and STAX emissions capture. Save scenarios, compare them, and play any of them on the 3D port.</p>
     </div>
     <a href="${TWIN_PATH}">Open the port on the globe</a>
   </header>
@@ -150,8 +155,17 @@ app.innerHTML = `
       </fieldset>
       <fieldset>
         <legend>Shore power</legend>
-        <label class="inline"><input type="checkbox" id="shore" /> Ships plug in at berths 1-3</label>
+        <label class="inline"><input type="checkbox" id="shore" /> Ships plug in where berth shore power works</label>
         <div id="shoreTypes" class="checks"></div>
+        <p class="hint" id="shoreStatus"></p>
+      </fieldset>
+      <fieldset>
+        <legend>STAX emissions capture</legend>
+        <label class="inline"><input type="checkbox" id="stax" /> STAX barges treat ships at berths without shore power</label>
+        <div id="staxBerths" class="checks"></div>
+        <label for="staxBarges">Barges (one ship each)</label>
+        <input type="number" id="staxBarges" min="0" max="10" step="1" />
+        <p class="hint">Reefer, RoRo and tanker calls. The barge hooks on within 2 hours of arrival and lets go 1 hour before sailing (CARB rules).</p>
       </fieldset>
       <fieldset>
         <legend>Site battery</legend>
@@ -255,6 +269,12 @@ for (const [key, rule] of Object.entries(CHARGING_STRATEGIES))
   $('strategy').add(new Option(rule.label, key));
 for (const tariff of Object.values(TARIFFS))
   $('tariff').add(new Option(tariff.name, tariff.id));
+$('staxBerths').innerHTML = STAX.berths
+  .map(
+    (id) =>
+      `<label class="inline"><input type="checkbox" data-stax-berth="${esc(id)}" /> ${esc(id.replace('-', ' '))}</label>`,
+  )
+  .join('');
 $('shoreTypes').innerHTML = CALL_TYPES.map(
   (type) =>
     `<label class="inline"><input type="checkbox" data-shore-type="${esc(type)}" /> ${esc(type)}</label>`,
@@ -339,6 +359,19 @@ function syncForm() {
     box.checked = draft.shorePowerTypes.includes(box.dataset.shoreType);
     box.disabled = !draft.shorePower;
   }
+  const online = Object.keys(SHORE_POWER_IN_SERVICE).filter((id) =>
+    shorePowerInService(id, draft.year),
+  );
+  $('shoreStatus').textContent = online.length
+    ? `Working in ${draft.year}: ${online.map((id) => id.replace('-', ' ')).join(', ')}.`
+    : `No berth has working shore power in ${draft.year}: berths 1-2 were damaged in the December 2023 storm and return in 2028, when berths 4-5 get it too.`;
+  $('stax').checked = draft.stax;
+  for (const box of $('staxBerths').querySelectorAll('input')) {
+    box.checked = draft.staxBerths.includes(box.dataset.staxBerth);
+    box.disabled = !draft.stax;
+  }
+  $('staxBarges').value = String(draft.staxBarges);
+  $('staxBarges').disabled = !draft.stax;
   const b = draft.battery;
   // Energy and power are typed one after the other; until both are set
   // there is no battery, and the half-typed value has to stay in its box.
@@ -452,6 +485,20 @@ function kpi(label, value, note = '') {
   return `<div class="card kpi"><div class="label">${label}</div><div class="num">${value}</div><div class="note">${note}</div></div>`;
 }
 
+/** Ship NOx at berth, with what STAX saves (or would save) this year. */
+function staxKpi() {
+  const a = result.atBerth;
+  const saved = a.staxSavedTonnes;
+  const note = draft.stax
+    ? `STAX saves ${num(saved.nox, 1)} t NOx and ${num(saved.dpm * 1000)} kg diesel PM; ${num(a.withoutStax.totals.tonnes.nox, 1)} t without it`
+    : `STAX off: turning it on would save ${num(saved.nox, 1)} t NOx and ${num(saved.dpm * 1000)} kg diesel PM`;
+  return kpi(
+    'Ship NOx at berth',
+    `${num(a.current.totals.tonnes.nox, 1)} t`,
+    note,
+  );
+}
+
 function renderKpis() {
   const t = result.totals;
   const utr = result.fleets.utr;
@@ -483,6 +530,7 @@ function renderKpis() {
       `${num(t.co2Tonnes)} t`,
       `${num(utr.co2Tonnes)} t from UTRs`,
     ),
+    staxKpi(),
     result.battery
       ? kpi(
           'Battery savings',
@@ -612,6 +660,8 @@ function renderNotes() {
     'The port has four Liebherr mobile harbor cranes. Each draws 322.5 kWh per working hour: the LHM 420 Litronic 750 kW rating times a 0.43 crane load factor. Plug-in hybrids draw from the meter while working. The 2023 inventory has three plug-in hybrids and one diesel crane; the fleet plan replaces the diesel crane in 2024.',
     'Light-duty vehicles and Class IV forklifts are not in the fleet plan, so they default to diesel units sized to demand until you set a count.',
     'ZE equipment cost in the comparison is the electric units beyond the 2023 fleet at workbook unit costs (capital less CORE voucher, plus charging infrastructure). The site battery has no cost in the workbook and is not priced.',
+    `Ships at berth: hotel loads are EPA port-inventory defaults by vessel type (reefer 1,080 kW, RoRo 1,200 kW, tanker 625 kW auxiliary engines plus boilers), Tier I auxiliary engines on 0.1% sulfur distillate. Shore power and STAX cover the auxiliary engines, not boilers, and only between hook-up (2 h after arrival) and release (1 h before sailing).`,
+    `STAX: 99% of PM and 95% of NOx captured (STAX, Port of Hueneme), reactive organic gases capped at CARB's 0.1 g/kWh limit; CO2, CO and SO2 are not credited. The barge's own 320 kW renewable-diesel generator (CARB EO G-24-054 maximum, so an upper bound) adds Tier 4 exhaust and ${num(result.atBerth.bargeLifecycleCo2eTonnes)} t lifecycle CO2e a year with STAX on. Barges are pooled; a call that finds both busy waits for one.`,
     `Charger efficiency ${Math.round(draft.chargerEfficiency * 100)}%; a unit that runs flat charges back to ${Math.round(draft.reserve * 100)}% before returning to work. Diesel CO2 uses ${FACTORS.dieselKgCo2PerGallon} kg per gallon (EPA).`,
     draft.baseLoadKw
       ? `Buildings are a flat ${num(draft.baseLoadKw)} kW around the clock until utility bills are entered; the meter is a single placeholder service.`
@@ -721,6 +771,10 @@ $('controls').addEventListener('change', (event) => {
       ...draft.fleet,
       [specId]: { electric, diesel: read('diesel'), chargers },
     };
+  } else if (target.dataset.staxBerth) {
+    draft.staxBerths = [...$('staxBerths').querySelectorAll('input')]
+      .filter((box) => box.checked)
+      .map((box) => box.dataset.staxBerth);
   } else if (target.dataset.shoreType) {
     draft.shorePowerTypes = [...$('shoreTypes').querySelectorAll('input')]
       .filter((box) => box.checked)
@@ -741,6 +795,8 @@ $('controls').addEventListener('change', (event) => {
     draft.includeDeferredDemand = $('deferred').checked;
   else if (id === 'baseLoad') draft.baseLoadKw = numberOf('baseLoad');
   else if (id === 'shore') draft.shorePower = $('shore').checked;
+  else if (id === 'stax') draft.stax = $('stax').checked;
+  else if (id === 'staxBarges') draft.staxBarges = numberOf('staxBarges', 2);
   else if (id.startsWith('bat')) draft.battery = readBattery();
   view.week = null;
   run();
