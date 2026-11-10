@@ -153,6 +153,28 @@ export const CARGO_TYPES = options([
   ['military', 'Military cargo', []],
 ]);
 
+/**
+ * Where a drayage truck charges (same ids as CHARGE_LOCATIONS in
+ * fleet/planner.js). Operator is the provider, e.g. WattEV.
+ */
+export const CHARGE_SITE_KINDS = options([
+  [
+    'home_yard',
+    "Carrier's home yard (behind its meter)",
+    ['home yard', 'yard', 'depot'],
+  ],
+  [
+    'third_party',
+    'Third-party charging station',
+    ['station', 'public', 'wattev'],
+  ],
+  [
+    'caas',
+    'Charging-as-a-Service at the home yard',
+    ['caas', 'charging as a service'],
+  ],
+]);
+
 const f = (key, label, type, extra = {}) =>
   Object.freeze({ key, label, type, ...extra });
 
@@ -356,6 +378,52 @@ const RAW_CLASSES = Object.freeze({
       ]),
     }),
     f('homeId', 'Staging yard', 'ref', { refClass: ['yard', 'building'] }),
+    f('carrierId', 'Carrier', 'ref', { refClass: 'drayage_carrier' }),
+  ]),
+
+  // Trucking companies and where their trucks charge. Drayage trucks never
+  // charge at the port: at the carrier's home yard (behind its own meter),
+  // at a third-party station, or at a Charging-as-a-Service site in the
+  // home yard. Location is the home yard; real carrier records stay in the
+  // private overlay.
+  drayage_carrier: assetClass(
+    'landside',
+    'Drayage carrier (trucking company)',
+    [
+      f('usdot', 'USDOT number', 'code', {
+        pattern: '^[0-9]{1,8}$',
+        example: '1234567',
+      }),
+      count('trucks', 'Trucks serving the port', { max: 5000 }),
+      count('evTrucks', 'Electric trucks', { max: 5000 }),
+      f('chargeAt', 'Where its electric trucks charge', 'enum', {
+        options: CHARGE_SITE_KINDS,
+      }),
+      f('chargingSiteId', 'Charging site', 'ref', {
+        refClass: 'charging_site',
+      }),
+      quantity(
+        'roundTripMi',
+        'Typical round trip (yard, port, drop, yard)',
+        'mi',
+        {
+          max: 1000,
+        },
+      ),
+      quantity('tripsPerTruck', 'Port trips per truck per day', 'trips/day', {
+        max: 24,
+        step: 0.5,
+      }),
+    ],
+  ),
+  charging_site: assetClass('landside', 'Truck charging site (off port)', [
+    f('kind', 'Kind of site', 'enum', {
+      required: true,
+      options: CHARGE_SITE_KINDS,
+    }),
+    count('chargers', 'Chargers', { max: 500 }),
+    quantity('chargerKw', 'Power per charger', 'kW', { max: 3000 }),
+    f('utility', 'Utility', 'enum', { options: UTILITIES }),
   ]),
 
   // Fixed assets
