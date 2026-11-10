@@ -14,6 +14,7 @@
  * (GEV_INTERVIEW_DAILY_MAX, default 1500 turns), on top of the OpenAI
  * provider limits. A turn is roughly 3-5k input tokens on gpt-4.1-mini.
  */
+import { STAX } from '../../../src/portos/atBerth.js';
 import { createTextChatHandler } from '../common/textChat.js';
 import { OPENAI_DEFAULT_PER_MIN } from './rate-limit.js';
 import { resolvePerMinuteCap } from '../common/rate-limit.js';
@@ -124,6 +125,7 @@ export function interviewInstructions(scenario) {
     `- delivered: {sharePct 0-100, profile, pricePerKwh 0-2} energy supplied from outside the utility meter (PPA, microgrid, solar, fuel cell, energy as a service). sharePct is the share of the port's yearly load it covers. Profiles: ${profiles}. Ask what the source is (it picks the profile: solar -> solar, fuel cell or firm PPA -> baseload, a contract that follows load -> share, a peak product -> peak) and its delivered price in $/kWh (offer 0.10, 0.14, 0.18 and "not known yet" -> 0). Solar and peak profiles may be curtailed when supply exceeds load.`,
     `- strategy (charging rule): ${strategies}. reserve (0-0.9): state of charge a unit tops back up to before returning to work. chargerEfficiency (0.5-1).`,
     `- shorePower (bool) and shorePowerTypes (subset of: ${CALL_TYPES.join(', ')}): ships plug in at berths 1-3.`,
+    `- stax (bool, default true), staxBerths (subset of: ${STAX.berths.join(', ')}) and staxBarges (0-10): STAX emissions-capture barges serving ships at berths without working shore power. They cut ship NOx and diesel PM at berth, not the electricity bill. Shore power wins at a berth when both are on.`,
     '- baseLoadKw (0-100000): buildings and other flat load in kW.',
     '- battery: {kwh, kw, roundTripEfficiency 0.5-1, thresholdKw ("auto" or kW)} a site battery for peak shaving; null removes it.',
     '- name: a short scenario name.',

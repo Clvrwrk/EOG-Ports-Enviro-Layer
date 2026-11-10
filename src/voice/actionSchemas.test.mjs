@@ -58,7 +58,9 @@ test('the complete Realtime tool payload pins the manifest-generated layer relea
     // control_cockpit states the own-layer entry rule (Contacts not required).
     // move_camera tilt takes an optional pitchDeg angle, described as
     // absolute with its -45 default, with steps sent as a direction.
-    '6a0d154e68beb787c4e20f12d29a5c86577dc343f3e71d8b5651998ea45d8c3c',
+    // analyst_query's description is reworded to fit OpenAI's 1,024-character
+    // function-description limit for typed chat.
+    'a1dd015e3ed2fd4c158b9f6ecda751df525ddfcd176b0c7188fc735d58de8fd9',
   );
 });
 

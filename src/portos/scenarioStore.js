@@ -14,6 +14,7 @@ import {
   UNIT_COSTS,
 } from './hueneme.js';
 import { DELIVERED_PROFILES } from './delivered.js';
+import { STAX } from './atBerth.js';
 import { DEFAULT_SCENARIO } from './scenario.js';
 import { TARIFFS } from './tariffs.js';
 
@@ -127,6 +128,13 @@ export function normalizeScenario(input = {}) {
     fleet,
     shorePower: Boolean(raw.shorePower),
     shorePowerTypes: types.length ? types : [...d.shorePowerTypes],
+    // STAX defaults on (Hueneme runs two barges); only an explicit false
+    // turns it off, so older saved scenarios keep today's port.
+    stax: raw.stax !== false,
+    staxBerths: Array.isArray(raw.staxBerths)
+      ? STAX.berths.filter((id) => raw.staxBerths.includes(id))
+      : [...d.staxBerths],
+    staxBarges: whole(raw.staxBarges, 0, 10, d.staxBarges),
     baseLoadKw: clamp(raw.baseLoadKw, 0, 100_000, d.baseLoadKw),
     battery,
     capexMethod: raw.capexMethod === 'workbook' ? 'workbook' : 'per-unit',
@@ -333,6 +341,13 @@ export const METRICS = Object.freeze([
   { id: 'mwh', label: 'Grid energy / yr', unit: 'MWh', better: 0 },
   { id: 'gallons', label: 'Diesel / yr', unit: 'gal', better: -1 },
   { id: 'co2', label: 'Equipment CO2 / yr', unit: 't', better: -1 },
+  { id: 'shipNox', label: 'Ship NOx at berth / yr', unit: 't', better: -1 },
+  {
+    id: 'shipDpm',
+    label: 'Ship diesel PM at berth / yr',
+    unit: 'kg',
+    better: -1,
+  },
   { id: 'capex', label: 'ZE equipment vs 2023 fleet', unit: '$', better: 0 },
   { id: 'unmet', label: 'Uncovered crew hours', unit: 'hr', better: -1 },
 ]);
@@ -349,6 +364,8 @@ export function summarize(result) {
     mwh: t.kwh / 1000,
     gallons: t.dieselGallons,
     co2: t.co2Tonnes,
+    shipNox: t.shipNoxTonnes ?? 0,
+    shipDpm: (t.shipDpmTonnes ?? 0) * 1000,
     capex: zeroEmissionCapex(result),
     unmet: t.unmetHours,
   };

@@ -141,9 +141,11 @@ test('twin toggles keep the rest of a builder scenario', () => {
     charging: 'asap',
     battery: 'custom',
     shorePower: false,
+    stax: true,
     rate: 'ev9',
   });
   const next = applyDecisions(built, { utrs: 'electric', shorePower: true });
+  assert.equal(applyDecisions(built, { stax: false }).stax, false);
   assert.equal(next.tariffId, 'SCE-TOU-EV-9');
   assert.equal(next.callScale, 1.2);
   assert.deepEqual(next.fleet.reach_stacker, built.fleet.reach_stacker);
@@ -163,4 +165,21 @@ test('twin toggles keep the rest of a builder scenario', () => {
     decisionsFromScenario(scenarioFromDecisions(DEFAULT_DECISIONS)),
     DEFAULT_DECISIONS,
   );
+});
+
+test('the twin shows the STAX barge only while it treats the ship', async () => {
+  const { runScenario } = await import('../scenario.js');
+  const { reeferCalls, twinFrame, staxCard } = await import('./frame.js');
+  const on = runScenario({ year: 2026 });
+  const call = reeferCalls(on).find(
+    (c) =>
+      on.atBerth.current.calls.find((a) => a.id === c.id).method === 'stax',
+  );
+  assert.ok(call, 'a reefer call treated by STAX');
+  const treated = on.atBerth.current.calls.find((a) => a.id === call.id);
+  assert.equal(twinFrame(on, call.start).exhaust, 'none'); // hooking up
+  assert.equal(twinFrame(on, treated.controlStart).exhaust, 'stax');
+  assert.match(staxCard(twinFrame(on, treated.controlStart), on).title, /STAX/);
+  const off = runScenario({ year: 2026, stax: false });
+  assert.equal(twinFrame(off, treated.controlStart).exhaust, 'none');
 });
