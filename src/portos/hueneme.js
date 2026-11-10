@@ -9,6 +9,8 @@
  * all of it through the admin portal as real records arrive.
  */
 
+import { BERTH_DETAILS, CRAFT_SPECS, PORT_ASSETS } from './huenemeAssets.js';
+
 const WORKBOOK = 'POH Utilization Model V23MFE';
 
 /** Per-unit equipment specs (CHE_Equipment_List). Energy per working hour. */
@@ -390,15 +392,28 @@ const BERTHS = [
   ['berth-7', 'Joint Use', false],
   ['berth-8', 'Joint Use', false],
   ['berth-9', 'Joint Use', false],
-].map(([id, zone, shorePower]) => ({ id, class: 'berth', zone, shorePower }));
+].map(([id, zone, shorePower]) => ({
+  id,
+  class: 'berth',
+  zone,
+  shorePower,
+  status: 'active',
+  ...BERTH_DETAILS[id],
+}));
 
-/** The Hueneme seed registry: 2023 fleet, berths, meter and chargers. */
+/**
+ * The Hueneme seed registry: berths, buildings, yards, gates, rail, harbor
+ * craft, the 2023 cargo-handling fleet, a placeholder meter and chargers.
+ * `specs` holds the workbook's CHE specs plus harbor craft and locomotive
+ * specs (CRAFT_SPECS), which the scenario engine does not run.
+ */
 export const HUENEME_REGISTRY = Object.freeze({
   portId: 'port-of-hueneme',
-  source: WORKBOOK,
-  specs: SPECS,
+  source: `${WORKBOOK}; port-wide assets from public sources (see huenemeAssets.js)`,
+  specs: Object.freeze({ ...SPECS, ...CRAFT_SPECS }),
   assets: [
     ...BERTHS,
+    ...PORT_ASSETS,
     {
       id: 'meter-che',
       class: 'meter',

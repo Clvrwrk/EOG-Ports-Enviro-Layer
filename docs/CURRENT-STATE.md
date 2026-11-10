@@ -151,6 +151,22 @@ across the antimeridian, so they cannot use the strict ±180 check as-is, and
 `src/sources/adsbRecords.js` and `server/providers/common/geo.js` keep their own
 implementations.
 
+## Port asset registry — November 10, 2026
+
+The asset registry (`src/portos/assetClasses.js`) now covers the whole port.
+Every class lists all of its fields (`fields`: key, label, type, unit,
+options, required), so the admin portal can build its forms from the schema;
+positions are `at: [lat, lon]`, `outline` and `path`, the same order as the
+meter registry and twin. `validateRegistry(registry, { meterIds })` checks
+field types and references, and `meterId` may name a meter from the run-time
+meter registry. The Hueneme seed adds public-source buildings, tanks, yards,
+a placeholder gate, rail spurs, locomotives, tugs and the pilot boat
+(`src/portos/huenemeAssets.js`, OSM geometry in `huenemeOsm.js`); each record
+names its source. Port staff's real records go in a git-ignored overlay at
+`public/private/assets/port-of-hueneme.json`, merged by id at run time
+(`src/portos/assets/overlay.js`, `load.js`); `assets/card.js` renders any
+asset as a data card. The twin does not draw the registry yet.
+
 ## Scenario builder — November 9, 2026
 
 `/scenarios` is now a full scenario builder and the twin plays what it makes.
