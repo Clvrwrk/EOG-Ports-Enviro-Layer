@@ -118,10 +118,10 @@ for (const [mmsi, recs] of byVessel) {
     );
     const tag = (k) => (rebuilt.sources[k]?.startsWith('assumed') ? '*' : '');
     console.log(
-      `  pilot on ${iso(m.pilotOnMs)}${tag('pilotOnMs')} | first tug fast ${iso(m.tugFirstFastMs)} | all fast ${iso(m.allFastMs)}`,
+      `  ${m.pilotOnMs ? `pilot on ${iso(m.pilotOnMs)}${tag('pilotOnMs')} | ` : ''}first tug fast ${iso(m.tugFirstFastMs)} | all fast ${iso(m.allFastMs)}`,
     );
     console.log(
-      `  let go ${iso(m.letGoMs)} | last tug release ${iso(m.tugLastReleaseMs)} | pilot off ${iso(m.pilotOffMs)}${tag('pilotOffMs')}   (* = assumed)`,
+      `  let go ${iso(m.letGoMs)} | last tug release ${iso(m.tugLastReleaseMs)}${m.pilotOffMs ? ` | pilot off ${iso(m.pilotOffMs)}${tag('pilotOffMs')}` : ''}`,
     );
     console.log(
       `  hours: inbound ${h(rebuilt.phases.inbound.hours)}, at berth ${h(rebuilt.phases.atBerth.hours)}, outbound ${h(rebuilt.phases.outbound.hours)}`,

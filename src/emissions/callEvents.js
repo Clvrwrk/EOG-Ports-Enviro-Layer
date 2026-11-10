@@ -7,6 +7,10 @@
 // how it was found ('observed' from craft contact, or 'assumed' from a
 // geofence fallback) so the UI can show which numbers are measured.
 //
+// Port of Hueneme needs no pilot (confirmed with port staff, 2026-11-10), so
+// pilot milestones stay empty there: they are filled only when a pilot boat
+// is actually seen on AIS, never inferred from a tug.
+//
 // Records are { mmsi, t (ms), lon, lat, sog (kn) }, as from
 // parseMarineCadastreRow in aisCalls.js.
 
@@ -327,17 +331,6 @@ export function reconstructCall(
     (r) => r.zone === 'harbor' || r.zone === 'berth',
   );
 
-  // With no pilot boat on AIS, a tug meeting the ship outside the breakwater
-  // is taken as the pilot transfer (at small ports the assist tug often
-  // carries the pilot). Labeled 'assumed' so it is never read as observed.
-  const offshoreTug = (leg) =>
-    jobs.filter(
-      (j) =>
-        j.leg === leg &&
-        j.role === 'tug' &&
-        (leg === 'inbound' ? j.shipZoneAtStart : j.shipZoneAtEnd) ===
-          'approach',
-    );
   const milestones = {
     pilotOnMs: pick('inbound', 'pilot', (xs) => transfer(xs, 'first')),
     tugFirstFastMs: pick('inbound', 'tug', firstStart),
@@ -356,17 +349,6 @@ export function reconstructCall(
         : k === 'allFastMs' || k === 'letGoMs'
           ? 'berth-stay'
           : 'observed';
-  const inTug = offshoreTug('inbound');
-  if (milestones.pilotOnMs === null && inTug.length) {
-    milestones.pilotOnMs = inTug[0].contactStartMs;
-    sources.pilotOnMs = 'assumed: first tug contact outside the breakwater';
-  }
-  const outTug = offshoreTug('outbound');
-  if (milestones.pilotOffMs === null && outTug.length) {
-    milestones.pilotOffMs = outTug.at(-1).contactEndMs;
-    sources.pilotOffMs = 'assumed: last tug contact outside the breakwater';
-  }
-
   // Window start: first of pilot on / first tug fast. Fall back to entering
   // the harbor zone, flagged, when no craft was seen.
   const inboundCandidates = [

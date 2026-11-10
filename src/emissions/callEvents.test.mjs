@@ -10,7 +10,7 @@ import {
   positionAt,
   reconstructCall,
 } from './callEvents.js';
-import { HUENEME_BERTH_POINTS } from './huenemeBerths.js';
+import { HUENEME_BERTH_POINTS, HUENEME_BERTH_USE } from './huenemeBerths.js';
 import { PORT_OF_HUENEME } from './ports.js';
 
 const T0 = Date.parse('2023-06-12T00:00:00Z');
@@ -182,6 +182,13 @@ test('scenario: shore power and electric tugs cut the call total', () => {
     berthPoints: HUENEME_BERTH_POINTS,
     shipLengthM: 180,
   });
+  // Hueneme needs no pilot: a tug alone never stands in for one.
+  assert.equal(rebuilt.milestones.pilotOnMs, null);
+  assert.equal(rebuilt.milestones.pilotOffMs, null);
+  assert.equal(
+    rebuilt.craftJobs.some((j) => j.role === 'pilot'),
+    false,
+  );
   const vessel = { shipType: 'Reefer', subtype: 'All Reefer', keelYear: 2010 };
   const base = callEmissions(call, rebuilt, { vessel });
   const scen = callEmissions(call, rebuilt, {
@@ -193,4 +200,11 @@ test('scenario: shore power and electric tugs cut the call total', () => {
   assert.equal(scen.craftTonnes.nox, 0);
   assert.ok(scen.gridKwh > 0);
   assert.equal(base.gridKwh, 0);
+});
+
+test('berth use notes cover berths 1-9 and mark the Navy berths', () => {
+  for (let n = 1; n <= 9; n++) assert.ok(HUENEME_BERTH_USE[`berth-${n}`]);
+  assert.equal(HUENEME_BERTH_USE['berth-4'].mainUse, 'ro-ro');
+  assert.equal(HUENEME_BERTH_USE['berth-5'].operator, 'shared');
+  assert.equal(HUENEME_BERTH_USE['berth-7'].operator, 'navy');
 });

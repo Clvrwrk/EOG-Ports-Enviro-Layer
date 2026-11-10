@@ -13,3 +13,24 @@ export const HUENEME_BERTH_POINTS = Object.freeze(
       Object.freeze({ id: `berth-${key.slice(5)}`, lon, lat }),
     ),
 );
+
+/**
+ * How each berth is used, from Port of Hueneme staff (via Chris, 2026-11-10).
+ * operator: 'poh' | 'shared' (US Navy and POH) | 'navy'. Navy-only berths are
+ * outside the port's own call inventory.
+ */
+export const HUENEME_BERTH_USE = Object.freeze({
+  'berth-1': Object.freeze({ operator: 'poh', mainUse: null }),
+  'berth-2': Object.freeze({ operator: 'poh', mainUse: null }),
+  'berth-3': Object.freeze({
+    operator: 'poh',
+    mainUse: null,
+    note: 'not used very often',
+  }),
+  'berth-4': Object.freeze({ operator: 'poh', mainUse: 'ro-ro' }),
+  'berth-5': Object.freeze({ operator: 'shared', mainUse: null }),
+  'berth-6': Object.freeze({ operator: 'shared', mainUse: null }),
+  'berth-7': Object.freeze({ operator: 'navy', mainUse: null }),
+  'berth-8': Object.freeze({ operator: 'navy', mainUse: null }),
+  'berth-9': Object.freeze({ operator: 'navy', mainUse: null }),
+});
