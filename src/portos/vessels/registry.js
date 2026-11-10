@@ -8,6 +8,11 @@
  *
  * Every record names its `source`. Any field that was estimated rather than
  * read from a registry is listed in `estimated`.
+ *
+ * `engines` holds what the EPA port inventory method (src/emissions/
+ * ogvMethod.js) needs that AIS does not broadcast: the main engine, the EPA
+ * ship type and subtype, and auxiliary and boiler loads by operating mode.
+ * `shorePower` says whether the ship is fitted to plug in at berth.
  */
 
 /** Cargo classes, matching the port's own vessel categories. */
@@ -84,14 +89,75 @@ export function normalizeVessel(raw) {
       : cargoClassFromType(raw.cargoClass ?? raw.vesselType),
     particulars,
     renamedTo: text(raw.renamedTo),
-    shorePower: raw.shorePower ?? null,
-    engines: raw.engines ?? null,
+    shorePower: normalizeShorePower(raw.shorePower),
+    engines: normalizeEngines(raw.engines),
     estimated: Array.isArray(raw.estimated) ? [...raw.estimated] : [],
     note: text(raw.note),
     source: text(raw.source),
   };
   if (raw.calls) vessel.calls = normalizeCalls(raw.calls);
   return vessel;
+}
+
+const MODES = Object.freeze([
+  'transit',
+  'maneuvering',
+  'hotelling',
+  'anchorage',
+]);
+
+/** Engine types the EPA method knows (Table 3.5). */
+export const ENGINE_TYPES = Object.freeze(['SSD', 'MSD', 'HSD', 'ST', 'GT']);
+
+function loadsByMode(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const loads = {};
+  for (const mode of MODES) {
+    const kw = Number(raw[mode]);
+    loads[mode] = raw[mode] === null || !Number.isFinite(kw) ? null : kw;
+  }
+  return Object.values(loads).some((kw) => kw !== null) ? loads : null;
+}
+
+function normalizeEngines(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const main = raw.main ?? {};
+  const engineType = ENGINE_TYPES.includes(main.engineType)
+    ? main.engineType
+    : null;
+  return {
+    main: {
+      make: text(main.make),
+      model: text(main.model),
+      kw: num(main.kw),
+      engineType,
+      source: text(main.source),
+    },
+    epa: raw.epa
+      ? {
+          shipType: text(raw.epa.shipType),
+          subtype: text(raw.epa.subtype),
+          basis: text(raw.epa.basis),
+        }
+      : null,
+    auxKw: loadsByMode(raw.auxKw),
+    boilerKw: loadsByMode(raw.boilerKw),
+    loadsSource: text(raw.loadsSource),
+    reeferPlugs: num(raw.reeferPlugs),
+    teu: num(raw.teu),
+    capacitySource: text(raw.capacitySource),
+  };
+}
+
+function normalizeShorePower(raw) {
+  if (raw === null || raw === undefined) return null;
+  if (typeof raw === 'boolean')
+    return { capable: raw, source: null, note: null };
+  return {
+    capable: typeof raw.capable === 'boolean' ? raw.capable : null,
+    source: text(raw.source),
+    note: text(raw.note),
+  };
 }
 
 function normalizeCalls(calls) {
@@ -130,6 +196,21 @@ export function validateInventory(inventory) {
     for (const field of vessel.estimated ?? [])
       if (typeof field !== 'string')
         problems.push(`${where}: estimated must list field names`);
+    const engines = vessel.engines;
+    if (engines) {
+      if (engines.main.kw && !engines.main.source)
+        problems.push(`${where}: main engine has no source`);
+      if ((engines.auxKw || engines.boilerKw) && !engines.loadsSource)
+        problems.push(`${where}: auxiliary and boiler loads have no source`);
+      if (engines.auxKw && !engines.epa?.shipType)
+        problems.push(`${where}: loads without an EPA ship type`);
+    }
+    if (
+      vessel.shorePower?.capable !== null &&
+      vessel.shorePower?.capable !== undefined &&
+      !vessel.shorePower.source
+    )
+      problems.push(`${where}: shore power has no source`);
   }
   return problems;
 }
@@ -190,4 +271,51 @@ export function vesselLine(vessel) {
     bits.push(`${Math.round(p.grossTonnage).toLocaleString('en-US')} GT`);
   if (p.yearBuilt) bits.push(`built ${p.yearBuilt}`);
   return bits.length ? `${vessel.name} (${bits.join(', ')})` : vessel.name;
+}
+
+/**
+ * The ship as the EPA method's vessel characteristics: a row for
+ * createVesselRegistry (src/emissions/vesselRegistry.js) and the `vessel`
+ * argument of intervalEmissions and callEmissions. Null when the record has
+ * no EPA ship type.
+ *
+ * The keel-laid year is not public, so the year built stands in for it (keel
+ * laying is usually within a year of delivery; it only matters at the NOx tier
+ * years 2000, 2011 and 2016).
+ */
+export function emissionsProfile(vessel) {
+  const engines = vessel?.engines;
+  if (!engines?.epa?.shipType || !engines.epa.subtype) return null;
+  const main = engines.main ?? {};
+  const profile = {
+    mmsi: vessel.mmsi,
+    imo: vessel.imo,
+    name: vessel.name,
+    shipType: engines.epa.shipType,
+    subtype: engines.epa.subtype,
+    keelYear: vessel.particulars?.yearBuilt ?? null,
+    propulsion: {
+      engineType: main.engineType ?? 'SSD',
+      installedKw: main.kw ?? null,
+      maxDraftM: vessel.particulars?.draftM ?? null,
+    },
+    auxiliary: { engineType: 'MSD' },
+    shorePowerCapable: vessel.shorePower?.capable ?? null,
+    estimated: [
+      'keelYear',
+      ...(main.engineType ? [] : ['propulsion.engineType']),
+      ...(vessel.estimated ?? []).filter((f) => f.startsWith('engines.')),
+    ],
+    source: [main.source, engines.loadsSource, vessel.source]
+      .filter(Boolean)
+      .join(' | '),
+  };
+  if (engines.auxKw) profile.auxKw = { ...engines.auxKw };
+  if (engines.boilerKw) profile.boilerKw = { ...engines.boilerKw };
+  return profile;
+}
+
+/** Emissions profiles for every ship that has an EPA ship type. */
+export function emissionsProfiles(inventory) {
+  return (inventory?.vessels ?? []).map(emissionsProfile).filter(Boolean);
 }

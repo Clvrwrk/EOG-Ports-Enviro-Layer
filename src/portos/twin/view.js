@@ -29,6 +29,7 @@ export const TWIN_COLORS = Object.freeze({
   deck: '#e8ecf2',
   charger: '#c7d2e0',
   smoke: '#5b5f66',
+  stax: '#3fbf5a',
 });
 
 const DEG = Math.PI / 180;
@@ -147,6 +148,27 @@ export function createTwinView(dataSource, layout) {
   const bridge = hull.model
     ? null
     : box('ship-bridge', [16, s.beam - 2, 16], TWIN_COLORS.deck);
+
+  // STAX barge: a 160 x 40 ft deck barge alongside the ship's water side
+  // (north), with a crane mast and an arm reaching to the ship's stack.
+  // Shown only while it treats the ship. A grey plume over the stack shows
+  // exhaust going to air.
+  const barge = box('stax-barge', [49, 12, 3], TWIN_COLORS.stax);
+  const bargeMast = box('stax-barge:mast', [3, 3, 24], TWIN_COLORS.stax);
+  const bargeArm = box('stax-barge:arm', [3, 2, 2], TWIN_COLORS.stax);
+  // The two STAXbox filter units on deck.
+  const bargeBox = box('stax-barge:box', [22, 9, 7], TWIN_COLORS.deck);
+  const stackPlume = entities.add({
+    id: `${TWIN_ENTITY_PREFIX}ship:plume`,
+    ellipsoid: {
+      radii: new Cesium.Cartesian3(6, 6, 9),
+      material: color(TWIN_COLORS.smoke, 0.5),
+      heightReference: REL,
+    },
+    show: false,
+  });
+  for (const piece of [barge, bargeMast, bargeArm, bargeBox])
+    piece.show = false;
 
   // Cranes: base, tower and a boom pitched up toward the water (north).
   const cranes = layout.cranes.map((spec, i) => {
@@ -303,6 +325,34 @@ export function createTwinView(dataSource, layout) {
     const shipBerth = frame.ship
       ? berthPoint(layout, frame.ship.berthId)
       : null;
+    // The stack sits toward the stern, under the bridge.
+    const stack = shipBerth && {
+      east: shipBerth.east - s.length / 2 + 14,
+      north: shipBerth.north,
+    };
+    const treating = Boolean(stack) && frame.exhaust === 'stax';
+    for (const piece of [barge, bargeMast, bargeArm, bargeBox])
+      piece.show = treating;
+    if (treating) {
+      const bargeAt = {
+        east: stack.east,
+        north: stack.north + s.beam / 2 + 14,
+      };
+      move(barge, bargeAt, 1.5);
+      move(bargeMast, { east: bargeAt.east, north: bargeAt.north + 2 }, 15);
+      move(bargeBox, { east: bargeAt.east + 12, north: bargeAt.north }, 6.5);
+      // The arm runs from the mast top over to the stack.
+      const reach = bargeAt.north + 2 - stack.north;
+      bargeArm.box.dimensions = new Cesium.Cartesian3(reach, 2, 2);
+      move(
+        bargeArm,
+        { east: stack.east, north: stack.north + reach / 2 },
+        s.height + 22,
+        0,
+      );
+    }
+    stackPlume.show = Boolean(stack) && frame.exhaust === 'none';
+    if (stack) stackPlume.position = place(stack, s.height + 30);
     hull.show = Boolean(shipBerth);
     if (bridge) bridge.show = Boolean(shipBerth);
     if (shipBerth) {
@@ -313,7 +363,12 @@ export function createTwinView(dataSource, layout) {
           { east: shipBerth.east - s.length / 2 + 14, north: shipBerth.north },
           s.height + 8,
         );
-      paint(hull, shorePower ? '#1f6f78' : TWIN_COLORS.hull);
+      paint(
+        hull,
+        shorePower && frame.exhaust === 'shore-power'
+          ? '#1f6f78'
+          : TWIN_COLORS.hull,
+      );
     }
     const workBerth = shipBerth ?? berthPoint(layout, 'berth-1');
     loop = utrLoopFor(layout, workBerth);
@@ -420,6 +475,7 @@ export function createTwinView(dataSource, layout) {
     const charger = key.match(/^charger-(\d+)/);
     if (charger) return { kind: 'charger', index: Number(charger[1]) };
     if (key.startsWith('ship')) return { kind: 'ship' };
+    if (key.startsWith('stax-barge')) return { kind: 'stax' };
     return null;
   }
 

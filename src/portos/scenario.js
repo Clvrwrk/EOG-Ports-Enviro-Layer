@@ -8,6 +8,11 @@
 import { billByMonth, stepPeriods } from './billing.js';
 import { dispatchBattery } from './battery.js';
 import { capexPlan } from './capex.js';
+import {
+  STAX,
+  atBerthWithAndWithoutStax,
+  shorePowerInService,
+} from './atBerth.js';
 import { simulateFleet } from './fleetSim.js';
 import {
   CALL_PROFILE,
@@ -44,6 +49,11 @@ export const DEFAULT_SCENARIO = Object.freeze({
   fleet: {},
   shorePower: false,
   shorePowerTypes: ['Refrigerated'],
+  // STAX emissions capture barges for ships at berths without shore power
+  // (on by default: Hueneme runs two today). See atBerth.js.
+  stax: true,
+  staxBerths: STAX.berths,
+  staxBarges: STAX.barges,
   baseLoadKw: 0,
   battery: null,
   capexMethod: 'per-unit',
@@ -177,13 +187,18 @@ export function runScenario(input = {}, context = {}) {
   const shoreKw = scenario.shorePower
     ? shorePowerLoad(calls, {
         totalSteps,
+        // Only vaults whose berth has shore power in service that year.
         vaults: registry.assets.filter(
-          (asset) => asset.class === 'shore_power',
+          (asset) =>
+            asset.class === 'shore_power' &&
+            shorePowerInService(asset.berthId, scenario.year),
         ),
         types: scenario.shorePowerTypes,
       })
     : null;
   if (shoreKw) for (let i = 0; i < totalSteps; i += 1) siteKw[i] += shoreKw[i];
+
+  const atBerth = atBerthWithAndWithoutStax(calls, scenario);
 
   let battery = null;
   let meterKw = siteKw;
@@ -226,6 +241,7 @@ export function runScenario(input = {}, context = {}) {
     shoreKw,
     meterKw,
     dieselGallons,
+    atBerth,
     battery,
     bills,
     capex: capexPlan(PURCHASES, UNIT_COSTS, { method: scenario.capexMethod }),
@@ -244,6 +260,12 @@ export function runScenario(input = {}, context = {}) {
       dieselCost: gallons * FACTORS.dieselDollarsPerGallon,
       co2Tonnes: (gallons * FACTORS.dieselKgCo2PerGallon) / 1000,
       unmetHours,
+      shipNoxTonnes: atBerth.current.totals.tonnes.nox,
+      shipPm25Tonnes: atBerth.current.totals.tonnes.pm25,
+      shipDpmTonnes: atBerth.current.totals.tonnes.dpm,
+      shipCo2Tonnes: atBerth.current.totals.tonnes.co2,
+      staxNoxSavedTonnes: scenario.stax ? atBerth.staxSavedTonnes.nox : 0,
+      staxDpmSavedTonnes: scenario.stax ? atBerth.staxSavedTonnes.dpm : 0,
     },
   };
 }

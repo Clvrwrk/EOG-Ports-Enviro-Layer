@@ -35,6 +35,9 @@ import {
   loadSite,
   structureCard,
 } from '../site/view.js';
+import { assetCard } from '../assets/card.js';
+import { loadAssetRegistry } from '../assets/load.js';
+import { ASSET_ENTITY_PREFIX, createAssetView } from '../assets/view.js';
 import { runScenario } from '../scenario.js';
 import {
   baselineScenario,
@@ -51,6 +54,7 @@ import {
   nextCallStart,
   scoreboard,
   shipCard,
+  staxCard,
   twinFrame,
   unitCard,
 } from './frame.js';
@@ -71,6 +75,7 @@ const OWN_PREFIXES = [
   METER_ENTITY_PREFIX,
   GRID_ENTITY_PREFIX,
   SITE_ENTITY_PREFIX,
+  ASSET_ENTITY_PREFIX,
 ];
 const PLAN_ID = 'plan';
 const LINK_ID = 'link';
@@ -90,6 +95,7 @@ export function createPortTwin({
   layout = TWIN_LAYOUT,
   loadMeters = loadMeterRegistry,
   loadSiteMap = loadSite,
+  loadAssets = loadAssetRegistry,
   overlayHost = null,
 } = {}) {
   let viewer = null;
@@ -125,6 +131,8 @@ export function createPortTwin({
   let flows = null;
   let readings = new Map();
   let siteView = null;
+  let assets = null; // port asset registry, once loaded
+  let assetView = null;
   let mapSwitch = null;
   let usage = null;
   let runCount = 0;
@@ -200,8 +208,10 @@ export function createPortTwin({
     }
     if (target.kind === 'edge' || target.kind === 'node')
       return network ? networkCard(network, flows, meters, target) : null;
+    if (target.kind === 'asset') return assetCard(target.asset, assets);
     if (target.kind === 'structure') return structureCard(target.item);
     if (target.kind === 'ship') return shipCard(frame, result, vessels);
+    if (target.kind === 'stax') return staxCard(frame, result);
     if (target.kind === 'charger')
       return chargerCard(frame, target.index, result);
     if (target.kind === 'crane') {
@@ -248,6 +258,9 @@ export function createPortTwin({
     if (layers.equipment)
       for (const item of view?.labels() ?? [])
         entries.push(name(`mark:${item.id}`, item, '#20e7f2', 200));
+    if (layers.assets)
+      for (const item of assetView?.labels() ?? [])
+        entries.push(name(`asset:${item.id}`, item, '#ffd166', 60));
     if (layers.meters)
       for (const item of meterView?.labels() ?? [])
         entries.push(name(`meter:${item.id}`, item, '#ffd166', 100));
@@ -372,6 +385,8 @@ export function createPortTwin({
     if (grid) return grid;
     const unit = view.identify(entityId);
     if (unit) return unit;
+    const asset = assetView?.identify(entityId);
+    if (asset) return { kind: 'asset', asset };
     const item = siteView?.identify(entityId);
     return item ? { kind: 'structure', item } : null;
   }
@@ -400,6 +415,10 @@ export function createPortTwin({
       return;
     }
     if (id === 'structures' || id === 'roads') siteView?.setVisible(id, on);
+    if (id === 'assets') {
+      assetView?.setVisible(on);
+      publishNames();
+    }
     if (id === 'grid') gridView?.setLinesVisible(on);
     if (id === 'plugs') gridView?.setPlugsVisible(on);
     if (id === 'meters') {
@@ -444,21 +463,33 @@ export function createPortTwin({
     raf = requestAnimationFrame(loop);
     // Meters and the site map arrive after the twin is up; skip them if it
     // was switched off meanwhile.
-    Promise.resolve(loadMeters()).then((registry) => {
-      if (!stillMine() || !registry) return;
-      meters = registry;
-      meterView = createMeterView(dataSource, registry);
-      meterView.setVisible(layers.meters);
-      plugMap = plugLayout(registry);
-      network = buildNetwork(registry, layout, plugMap);
-      gridView = createNetworkView(dataSource, network, plugMap);
-      gridView.setLinesVisible(layers.grid);
-      gridView.setPlugsVisible(layers.plugs);
-      panel.showMeters(registry);
-      publishNames();
-      allocate();
-      render('port-twin-meters');
-    });
+    Promise.resolve(loadMeters())
+      .then((registry) => {
+        if (!stillMine() || !registry) return;
+        meters = registry;
+        meterView = createMeterView(dataSource, registry);
+        meterView.setVisible(layers.meters);
+        plugMap = plugLayout(registry);
+        network = buildNetwork(registry, layout, plugMap);
+        gridView = createNetworkView(dataSource, network, plugMap);
+        gridView.setLinesVisible(layers.grid);
+        gridView.setPlugsVisible(layers.plugs);
+        panel.showMeters(registry);
+        publishNames();
+        allocate();
+        render('port-twin-meters');
+        // Port assets: the public seed plus any private overlay, whose meter
+        // links are checked against the meters just loaded.
+        return loadAssets({ meterIds: registry.meters.map((m) => m.id) });
+      })
+      .then((registry) => {
+        if (!stillMine() || !registry) return;
+        assets = registry;
+        assetView = createAssetView(dataSource, registry);
+        assetView.setVisible(layers.assets);
+        publishNames();
+        requestRender('port-twin-assets');
+      });
     // Staff signed in to /admin see the twin run on the registry they
     // edited; everyone else keeps the built-in seed.
     if (!runContext.registry)
@@ -499,6 +530,8 @@ export function createPortTwin({
     meterView = null;
     gridView = null;
     siteView = null;
+    assetView = null;
+    assets = null;
     meters = null;
     allocation = null;
     network = null;

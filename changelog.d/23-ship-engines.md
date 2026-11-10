@@ -1,0 +1,1 @@
+- Ship inventory: main engines, EPA default hotel loads and shore-power fitting per ship, with a source for each value and estimates marked, ready for the port emissions method.

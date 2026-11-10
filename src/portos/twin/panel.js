@@ -27,6 +27,7 @@ export const TWIN_LAYERS = Object.freeze([
   { id: 'grid', label: 'Utility lines and power flow', on: true },
   { id: 'meters', label: 'Electricity meters', on: true },
   { id: 'plugs', label: 'Reefer plugs', on: true },
+  { id: 'assets', label: 'Port assets (buildings, rail, tugs)', on: true },
   { id: 'graph', label: 'Usage graph', on: true },
   { id: 'map', label: 'Map image', on: true },
 ]);
@@ -192,6 +193,11 @@ export function createTwinPanel(
     '▶ Play',
   );
   const now = el('table');
+  const EXHAUST_NOW = {
+    'shore-power': 'Shore power, engines off',
+    stax: 'Captured by STAX barge',
+    none: 'To air (uncontrolled)',
+  };
   const board = el('table');
   const meterNote = el('p', { class: 'sub' }, 'Loading meters…');
   const meterBox = el(
@@ -322,6 +328,15 @@ export function createTwinPanel(
       decisions.shorePower ? 'on' : 'off',
       (v) => handlers.onDecision({ shorePower: v === 'on' }),
     ),
+    stax: select(
+      'stax',
+      [
+        ['on', 'On'],
+        ['off', 'Off'],
+      ],
+      decisions.stax === false ? 'off' : 'on',
+      (v) => handlers.onDecision({ stax: v === 'on' }),
+    ),
   };
 
   const body = el(
@@ -377,6 +392,7 @@ export function createTwinPanel(
       el('label', {}, 'UTR charging', controls.charging),
       el('label', {}, 'Site battery', controls.battery),
       el('label', {}, 'Reefer shore power', controls.shorePower),
+      el('label', {}, 'STAX capture barge', controls.stax),
     ),
     el('label', {}, 'Rate sheet', controls.rate),
     el('fieldset', {}, boardTitle, board),
@@ -391,6 +407,7 @@ export function createTwinPanel(
         ['Diesel', TWIN_COLORS.diesel],
         ['Charging', TWIN_COLORS.charging],
         ['Parked', TWIN_COLORS.parked],
+        ['STAX barge', TWIN_COLORS.stax],
       ].map(([label, hex]) =>
         el('span', {}, el('i', { style: `background:${hex}` }), label),
       ),
@@ -492,6 +509,11 @@ export function createTwinPanel(
         controls.shorePower.options_,
         d.shorePower ? 'on' : 'off',
       );
+      fill(
+        controls.stax,
+        controls.stax.options_,
+        d.stax === false ? 'off' : 'on',
+      );
     },
     setPlaying(playing) {
       play.textContent = playing ? '❚❚ Pause' : '▶ Play';
@@ -513,6 +535,9 @@ export function createTwinPanel(
           'Ship at berth',
           frame.ship ? `${frame.ship.type} (${frame.ship.id})` : 'None',
         ],
+        ...(frame.ship
+          ? [['Ship exhaust', EXHAUST_NOW[frame.exhaust] ?? 'To air']]
+          : []),
         [
           'Cranes working',
           `${count(frame.cranes, 'working')} of ${frame.cranes.length}`,
