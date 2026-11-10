@@ -217,6 +217,7 @@ export function createScenarioInterviewHandler({
   now = Date.now,
   ...options
 } = {}) {
+  let daily;
   const chat = createTextChatHandler({
     resolveRateLimit: () => process.env.GEV_RATELIMIT_INTERVIEW_PER_MIN,
     resolveProviderRateLimit: () => INTERVIEW_DEFAULT_PER_MIN,
@@ -240,6 +241,19 @@ export function createScenarioInterviewHandler({
         !validMessages(input.messages)
       )
         return null;
+      // The daily cap is spent here, after the origin gate, the per-visitor
+      // limiter and input checks, so refused requests cannot drain it.
+      if (daily === undefined)
+        daily = makeDailyCap(
+          resolvePerMinuteCap(resolveDailyMax(), DAILY_DEFAULT),
+          now,
+        );
+      if (daily && !daily())
+        return {
+          errorStatus: 429,
+          error: 'The interview has reached its daily limit.',
+          code: 'DAILY_LIMIT',
+        };
       const scenario = normalizeScenario(input.scenario);
       const messages = input.messages.length
         ? input.messages
@@ -276,27 +290,5 @@ export function createScenarioInterviewHandler({
       return turn ? { turn, raw } : null;
     },
   });
-  let daily;
-  return (req, res) => {
-    if (req.method === 'POST') {
-      if (daily === undefined)
-        daily = makeDailyCap(
-          resolvePerMinuteCap(resolveDailyMax(), DAILY_DEFAULT),
-          now,
-        );
-      if (daily && !daily()) {
-        res.statusCode = 429;
-        res.setHeader('Content-Type', 'application/json; charset=utf-8');
-        res.setHeader('Cache-Control', 'no-store');
-        res.end(
-          JSON.stringify({
-            error: 'The interview has reached its daily limit.',
-            code: 'DAILY_LIMIT',
-          }),
-        );
-        return undefined;
-      }
-    }
-    return chat(req, res);
-  };
+  return chat;
 }

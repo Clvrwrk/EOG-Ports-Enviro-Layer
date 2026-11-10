@@ -49,6 +49,7 @@ async function fixture(t, overrides = {}) {
   const origin = `http://127.0.0.1:${server.address().port}`;
   return {
     calls,
+    origin,
     send: (input) =>
       fetch(origin, {
         method: 'POST',
@@ -121,6 +122,23 @@ test('the daily cap answers 429 without calling OpenAI', async (t) => {
   const second = await f.send({ messages: [], scenario: {} });
   assert.equal(second.status, 429);
   assert.equal((await second.json()).code, 'DAILY_LIMIT');
+  assert.equal(f.calls.length, 1);
+});
+
+test('refused requests do not spend the daily cap', async (t) => {
+  const f = await fixture(t, { resolveDailyMax: () => '1' });
+  const bad = await f.send({ messages: [{ role: 'system', content: 'x' }] });
+  assert.equal(bad.status, 400);
+  const response = await fetch(`http://127.0.0.1:${new URL(f.origin).port}`, {
+    method: 'POST',
+    headers: {
+      Origin: 'https://evil.example',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ messages: [], scenario: {} }),
+  });
+  assert.equal(response.status, 403);
+  assert.equal((await f.send({ messages: [], scenario: {} })).status, 200);
   assert.equal(f.calls.length, 1);
 });
 
