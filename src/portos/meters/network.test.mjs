@@ -74,11 +74,20 @@ test('the network reaches every meter and the loads behind them', () => {
   for (const meter of SAMPLE_REGISTRY.meters)
     assert.ok(ids.has(`service:${meter.id}`), meter.id);
   const kinds = new Set(network.nodes.map((n) => n.kind));
-  for (const kind of ['feed', 'transformer', 'vault', 'outlet', 'charger', 'rack'])
+  for (const kind of [
+    'feed',
+    'transformer',
+    'vault',
+    'outlet',
+    'charger',
+    'rack',
+  ])
     assert.ok(kinds.has(kind), kind);
   // Every route is drawn at right angles: each leg keeps a latitude or a
   // longitude.
-  for (const edge of network.edges.filter((e) => e.kind !== 'feeder' || e.id !== 'feeder:riser'))
+  for (const edge of network.edges.filter(
+    (e) => e.kind !== 'feeder' || e.id !== 'feeder:riser',
+  ))
     for (let i = 1; i < edge.path.length; i += 1)
       assert.ok(
         edge.path[i][0] === edge.path[i - 1][0] ||

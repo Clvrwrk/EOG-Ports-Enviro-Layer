@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { runScenario } from '../scenario.js';
+import { normalizeScenario } from '../scenarioStore.js';
 import {
   DEFAULT_DECISIONS,
+  applyDecisions,
   chargerCard,
+  decisionsFromScenario,
   nextCallStart,
   reeferCalls,
   scenarioFromDecisions,
@@ -116,5 +119,48 @@ test('layout helpers place surveyed points in metres and walk the UTR loop', () 
   assert.deepEqual(
     rowSlot({ east: 0, north: 0 }, 9, { spacing: 3.5, perRow: 8, rowGap: 9 }),
     { east: 3.5, north: -9 },
+  );
+});
+
+test('twin toggles keep the rest of a builder scenario', () => {
+  const built = normalizeScenario({
+    name: 'From the builder',
+    year: 2030,
+    tariffId: 'SCE-TOU-EV-9',
+    callScale: 1.2,
+    fleet: {
+      utr: { electric: 15, diesel: 12, chargers: 10 },
+      reach_stacker: { electric: 3, diesel: 0, chargers: 3 },
+    },
+    battery: { kwh: 2000, kw: 750 },
+  });
+  assert.deepEqual(decisionsFromScenario(built), {
+    year: 2030,
+    utrs: 'custom',
+    cranes: 'plan',
+    charging: 'asap',
+    battery: 'custom',
+    shorePower: false,
+    rate: 'ev9',
+  });
+  const next = applyDecisions(built, { utrs: 'electric', shorePower: true });
+  assert.equal(next.tariffId, 'SCE-TOU-EV-9');
+  assert.equal(next.callScale, 1.2);
+  assert.deepEqual(next.fleet.reach_stacker, built.fleet.reach_stacker);
+  assert.equal(next.battery.kwh, 2000);
+  assert.equal(decisionsFromScenario(next).utrs, 'electric');
+  assert.equal(built.fleet.utr.electric, 15); // the input is not changed
+  assert.equal(
+    decisionsFromScenario(applyDecisions(next, { utrs: 'plan' })).utrs,
+    'plan',
+  );
+  // Switching the rate sheet changes the tariff and nothing else.
+  const rated = applyDecisions(next, { rate: 'ev9demand' });
+  assert.equal(rated.includeDeferredDemand, true);
+  assert.equal(rated.callScale, 1.2);
+  assert.equal(decisionsFromScenario(rated).rate, 'ev9demand');
+  assert.deepEqual(
+    decisionsFromScenario(scenarioFromDecisions(DEFAULT_DECISIONS)),
+    DEFAULT_DECISIONS,
   );
 });

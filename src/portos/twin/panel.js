@@ -1,7 +1,8 @@
 /**
- * The twin's control panel: the day and hour being played, the decisions
+ * The twin's control panel: which scenario is playing (the fleet plan, a
+ * saved one or one opened from a link), the day and hour, quick decisions
  * (UTRs, cranes, charging, battery, shore power, fleet-plan year), a live
- * "now" readout and the year scoreboard against today's baseline. Also the
+ * "now" readout and the year scoreboard against the baseline. Also the
  * data card that opens when a model is clicked.
  *
  * Plain DOM with its own scoped styles, mounted while the layer is on. It
@@ -57,6 +58,9 @@ const CSS = `
 .port-twin .driver{margin:0 0 6px;color:#e8ecf2}.port-twin .driver b{color:#ff8c3a}
 .port-twin .switch{width:100%;padding:6px;font-weight:600}
 .port-twin:not(.off) .switch{border-color:#20e7f2;color:#20e7f2}
+.port-twin select{max-width:190px}.port-twin a{color:#20e7f2}
+.port-twin .links{display:flex;gap:12px;flex-wrap:wrap;margin-top:4px}
+.port-twin .note{color:#9aa6b8;font-size:11px;margin:4px 0 0}
 .port-twin-card{position:fixed;z-index:41;min-width:220px;max-width:300px;background:rgba(10,14,22,.94);color:#e8ecf2;
   border:1px solid #20e7f2;border-radius:8px;padding:8px 10px;font:12px/1.4 system-ui,sans-serif;pointer-events:auto}
 .port-twin-card h3{margin:0 0 4px;font-size:13px}.port-twin-card table{border-collapse:collapse;width:100%}
@@ -78,6 +82,7 @@ const PERIOD_TEXT = {
   off: 'Off-peak',
   super_off: 'Super off-peak',
 };
+const CUSTOM_TEXT = { custom: 'Custom (set in the builder)' };
 const MONTHS = [
   'Jan',
   'Feb',
@@ -107,13 +112,23 @@ function el(tag, attrs = {}, ...children) {
   return node;
 }
 
+function fill(node, options, value) {
+  const list = options.some(([key]) => String(key) === String(value))
+    ? options
+    : [...options, [value, CUSTOM_TEXT[value] ?? String(value)]];
+  node.replaceChildren(
+    ...list.map(([key, label]) => {
+      const option = el('option', { value: key }, label);
+      if (String(key) === String(value)) option.selected = true;
+      return option;
+    }),
+  );
+}
+
 function select(name, options, value, onChange) {
   const node = el('select', { name, onchange: () => onChange(node.value) });
-  for (const [key, label] of options) {
-    const option = el('option', { value: key }, label);
-    if (String(key) === String(value)) option.selected = true;
-    node.append(option);
-  }
+  node.options_ = options;
+  fill(node, options, value);
   return node;
 }
 
@@ -143,6 +158,7 @@ function monthBars(bars = []) {
  * @param {(on: boolean) => void} handlers.onActive twin switched on or off
  * @param {(id: string, on: boolean) => void} handlers.onLayer
  * @param {(step: number) => void} handlers.onSeek
+ * @param {(id: string) => void} handlers.onScenario pick a listed scenario
  * @param {object} decisions current decisions
  * @param {object} layout twin layout
  * @param {{ host?: Element|null }} [options] where to mount; the page body
@@ -246,6 +262,68 @@ export function createTwinPanel(
   const decide = (key) => (value) =>
     handlers.onDecision({ [key]: key === 'year' ? Number(value) : value });
 
+  const picker = el('select', {
+    name: 'scenario',
+    'aria-label': 'Scenario',
+    onchange: () => handlers.onScenario(picker.value),
+  });
+  const builderLink = el('a', { href: '/scenarios' }, 'Edit in the builder');
+  const scenarioNote = el('p', { class: 'note' });
+  const boardTitle = el('legend', {}, 'Year vs. today');
+  const controls = {
+    year: select('year', years, decisions.year, decide('year')),
+    utrs: select(
+      'utrs',
+      [
+        ['plan', 'Fleet plan mix'],
+        ['diesel', 'All diesel'],
+        ['electric', 'All electric'],
+      ],
+      decisions.utrs,
+      decide('utrs'),
+    ),
+    cranes: select(
+      'cranes',
+      [
+        ['plan', 'Fleet plan mix'],
+        ['plug-in', 'All plug-in'],
+        ['diesel', 'All diesel'],
+      ],
+      decisions.cranes,
+      decide('cranes'),
+    ),
+    charging: select(
+      'charging',
+      Object.entries(CHARGING_STRATEGIES).map(([k, v]) => [k, v.label]),
+      decisions.charging,
+      decide('charging'),
+    ),
+    battery: select(
+      'battery',
+      [
+        ['none', 'None'],
+        ['1mwh', '1 MWh / 500 kW'],
+      ],
+      decisions.battery,
+      decide('battery'),
+    ),
+    rate: select(
+      'rate',
+      Object.entries(RATE_SHEETS).map(([k, v]) => [k, v.label]),
+      decisions.rate,
+      decide('rate'),
+    ),
+    shorePower: select(
+      'shorePower',
+      [
+        ['off', 'Off'],
+        ['on', 'On'],
+      ],
+      decisions.shorePower ? 'on' : 'off',
+      (v) => handlers.onDecision({ shorePower: v === 'on' }),
+    ),
+  };
+
   const body = el(
     'div',
     { class: 'body' },
@@ -260,6 +338,19 @@ export function createTwinPanel(
       'div',
       { class: 'row' },
       el('button', { onclick: () => handlers.onWalk() }, 'Walk to the berth'),
+    ),
+    el(
+      'fieldset',
+      {},
+      el('legend', {}, 'Scenario'),
+      el('label', {}, 'Playing', picker),
+      scenarioNote,
+      el(
+        'div',
+        { class: 'links' },
+        builderLink,
+        el('a', { href: '/scenarios#compare' }, 'Compare scenarios'),
+      ),
     ),
     el(
       'fieldset',
@@ -280,94 +371,15 @@ export function createTwinPanel(
       'fieldset',
       {},
       el('legend', {}, 'Decisions'),
-      el(
-        'label',
-        {},
-        'Year',
-        select('year', years, decisions.year, decide('year')),
-      ),
-      el(
-        'label',
-        {},
-        'UTRs',
-        select(
-          'utrs',
-          [
-            ['plan', 'Fleet plan mix'],
-            ['diesel', 'All diesel'],
-            ['electric', 'All electric'],
-          ],
-          decisions.utrs,
-          decide('utrs'),
-        ),
-      ),
-      el(
-        'label',
-        {},
-        'Harbor cranes',
-        select(
-          'cranes',
-          [
-            ['plan', 'Fleet plan mix'],
-            ['plug-in', 'All plug-in'],
-            ['diesel', 'All diesel'],
-          ],
-          decisions.cranes,
-          decide('cranes'),
-        ),
-      ),
-      el(
-        'label',
-        {},
-        'UTR charging',
-        select(
-          'charging',
-          Object.entries(CHARGING_STRATEGIES).map(([k, v]) => [k, v.label]),
-          decisions.charging,
-          decide('charging'),
-        ),
-      ),
-      el(
-        'label',
-        {},
-        'Site battery',
-        select(
-          'battery',
-          [
-            ['none', 'None'],
-            ['1mwh', '1 MWh / 500 kW'],
-          ],
-          decisions.battery,
-          decide('battery'),
-        ),
-      ),
-      el(
-        'label',
-        {},
-        'Reefer shore power',
-        select(
-          'shorePower',
-          [
-            ['off', 'Off'],
-            ['on', 'On'],
-          ],
-          decisions.shorePower ? 'on' : 'off',
-          (v) => handlers.onDecision({ shorePower: v === 'on' }),
-        ),
-      ),
+      el('label', {}, 'Year', controls.year),
+      el('label', {}, 'UTRs', controls.utrs),
+      el('label', {}, 'Harbor cranes', controls.cranes),
+      el('label', {}, 'UTR charging', controls.charging),
+      el('label', {}, 'Site battery', controls.battery),
+      el('label', {}, 'Reefer shore power', controls.shorePower),
     ),
-    el(
-      'label',
-      {},
-      'Rate sheet',
-      select(
-        'rate',
-        Object.entries(RATE_SHEETS).map(([k, v]) => [k, v.label]),
-        decisions.rate,
-        decide('rate'),
-      ),
-    ),
-    el('fieldset', {}, el('legend', {}, 'Year vs. today'), board),
+    el('label', {}, 'Rate sheet', controls.rate),
+    el('fieldset', {}, boardTitle, board),
     driverBox,
     layerBox,
     meterBox,
@@ -450,6 +462,37 @@ export function createTwinPanel(
       );
       driverNote.textContent = `${top.call ? `${top.call.type} ship at ${top.call.berthId.replace('-', ' ')}. ` : 'No ship at berth. '}${causes ? `Drawing then: ${causes}. ` : ''}${driver.billed ? `Each kW shaved off that peak saves about ${money(top.perKw)} that month; the load was within 10% of it for ${top.hoursAtPeak.toFixed(1)} hours.` : ''} Rates: ${driver.tariffStatus}.`;
     },
+    /**
+     * Which scenario is playing and what the quick controls show for it.
+     * @param {object} state
+     * @param {[string, string][]} state.options [id, name] of each choice
+     * @param {string} state.activeId
+     * @param {object} state.decisions as from decisionsFromScenario
+     * @param {string} state.builderHref the builder, opened on this scenario
+     * @param {string} state.baselineName
+     * @param {string} [state.note]
+     */
+    showScenario(state) {
+      fill(picker, state.options, state.activeId);
+      builderLink.setAttribute('href', state.builderHref);
+      scenarioNote.textContent = state.note ?? '';
+      boardTitle.textContent = `Year vs. ${state.baselineName}`;
+      const d = state.decisions;
+      for (const key of [
+        'year',
+        'utrs',
+        'cranes',
+        'charging',
+        'battery',
+        'rate',
+      ])
+        fill(controls[key], controls[key].options_, d[key]);
+      fill(
+        controls.shorePower,
+        controls.shorePower.options_,
+        d.shorePower ? 'on' : 'off',
+      );
+    },
     setPlaying(playing) {
       play.textContent = playing ? '❚❚ Pause' : '▶ Play';
     },
@@ -500,7 +543,7 @@ export function createTwinPanel(
           {},
           el('td', {}, ''),
           el('td', { class: 'v' }, 'Scenario'),
-          el('td', { class: 'd' }, 'vs today'),
+          el('td', { class: 'd' }, 'Change'),
         ),
         ...rows.map((row) => {
           const delta = row.value - row.base;

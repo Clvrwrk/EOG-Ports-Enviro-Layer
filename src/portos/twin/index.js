@@ -35,12 +35,19 @@ import {
   structureCard,
 } from '../site/view.js';
 import { runScenario } from '../scenario.js';
+import {
+  baselineScenario,
+  normalizeScenario,
+  readLibrary,
+  scenarioFromSearch,
+  scenarioLink,
+} from '../scenarioStore.js';
 import { STEPS_PER_DAY, STEPS_PER_HOUR } from '../touCalendar.js';
 import {
-  DEFAULT_DECISIONS,
+  applyDecisions,
   chargerCard,
+  decisionsFromScenario,
   nextCallStart,
-  scenarioFromDecisions,
   scoreboard,
   shipCard,
   twinFrame,
@@ -63,6 +70,18 @@ const OWN_PREFIXES = [
   GRID_ENTITY_PREFIX,
   SITE_ENTITY_PREFIX,
 ];
+const PLAN_ID = 'plan';
+const LINK_ID = 'link';
+const EDITED_ID = 'edited';
+const PLAN_NAME = 'Fleet plan, as today';
+
+const browserStorage = () => {
+  try {
+    return globalThis.localStorage ?? null;
+  } catch {
+    return null;
+  }
+};
 
 export function createPortTwin({
   requestRender = () => {},
@@ -81,7 +100,10 @@ export function createPortTwin({
   let playing = false;
   let active = false;
   let session = 0;
-  let decisions = { ...DEFAULT_DECISIONS };
+  let scenario = normalizeScenario({ name: PLAN_NAME });
+  let activeId = PLAN_ID;
+  let library = { items: [], baselineId: null };
+  let linked = null; // scenario that arrived in the page link
   let baseline = null;
   let result = null;
   let driver = null;
@@ -265,14 +287,56 @@ export function createPortTwin({
     requestRender(reason);
   }
 
+  function scenarioOptions() {
+    const options = [[PLAN_ID, PLAN_NAME]];
+    if (linked) options.push([LINK_ID, `${linked.name} (from link)`]);
+    for (const item of library.items)
+      options.push([item.id, item.scenario.name]);
+    if (activeId === EDITED_ID)
+      options.push([EDITED_ID, `${scenario.name} (edited here)`]);
+    return options;
+  }
+
+  function showScenario() {
+    const baselineItem = library.items.find(
+      (item) => item.id === library.baselineId,
+    );
+    panel.showScenario({
+      options: scenarioOptions(),
+      activeId,
+      decisions: decisionsFromScenario(scenario),
+      builderHref: scenarioLink(scenario, '/scenarios'),
+      baselineName: baselineItem ? baselineItem.scenario.name : 'today',
+      note:
+        activeId === EDITED_ID
+          ? 'Changed here. Open the builder to save it.'
+          : '',
+    });
+  }
+
   function run() {
-    result = runScenario(scenarioFromDecisions(decisions));
-    if (!baseline) baseline = result;
+    result = runScenario(scenario);
+    if (!baseline) baseline = runScenario(baselineScenario(library));
+    step = Math.min(step, result.siteKw.length - 1);
+    stepFloat = Math.min(stepFloat, result.siteKw.length - 1);
     driver = demandDriver(result, HUENEME_REGISTRY.specs);
     allocate();
+    showScenario();
     panel.showScoreboard(scoreboard(result, baseline));
     panel.showDriver(driver);
     render('port-twin-scenario');
+  }
+
+  function pick(id) {
+    library = readLibrary(browserStorage());
+    const saved = library.items.find((item) => item.id === id);
+    if (saved) scenario = saved.scenario;
+    else if (id === LINK_ID && linked) scenario = linked;
+    else if (id === PLAN_ID) scenario = normalizeScenario({ name: PLAN_NAME });
+    else return;
+    activeId = id;
+    baseline = null;
+    run();
   }
 
   function seek(next) {
@@ -351,9 +415,11 @@ export function createPortTwin({
     view = createTwinView(dataSource, layout);
     mapSwitch = createMapSwitch(viewer);
     if (!layers.map) mapSwitch.set(false);
-    result = runScenario(scenarioFromDecisions(decisions));
-    baseline ??= runScenario(scenarioFromDecisions(DEFAULT_DECISIONS));
+    library = readLibrary(browserStorage());
+    result = runScenario(scenario);
+    baseline ??= runScenario(baselineScenario(library));
     driver = demandDriver(result, HUENEME_REGISTRY.specs);
+    showScenario();
     // Open an hour into the first reefer call of the year.
     step = nextCallStart(result, -1, 1) + STEPS_PER_HOUR;
     stepFloat = step;
@@ -441,9 +507,11 @@ export function createPortTwin({
           onOpen: activate,
           onLayer: setLayer,
           onDecision(patch) {
-            decisions = { ...decisions, ...patch };
+            scenario = applyDecisions(scenario, patch);
+            activeId = EDITED_ID;
             run();
           },
+          onScenario: pick,
           onSeek: seek,
           onCallDay(direction) {
             // An hour into the call, when the cranes and UTRs are working.
@@ -466,12 +534,20 @@ export function createPortTwin({
             panel.showCard(null);
           },
         },
-        decisions,
+        decisionsFromScenario(scenario),
         layout,
       );
+      library = readLibrary(browserStorage());
+      linked = scenarioFromSearch(globalThis.location?.search ?? '');
+      if (linked) {
+        scenario = linked;
+        activeId = LINK_ID;
+      }
+      showScenario();
       // With the controls already in view the twin starts straight away;
-      // tucked in the menu, it waits to be opened.
-      if (panel.isOpen()) activate();
+      // tucked in the menu, it waits to be opened. A scenario that came in
+      // the page link is what the visitor asked to see, so it starts too.
+      if (panel.isOpen() || linked) activate();
     },
     disable() {
       deactivate();
@@ -486,7 +562,19 @@ export function createPortTwin({
     isActive: () => active,
     /** Current scenario result, for tests and the console. */
     getResult: () => result,
-    getDecisions: () => ({ ...decisions }),
+    getScenario: () => scenario,
+    getDecisions: () => decisionsFromScenario(scenario),
+    /** Play a scenario from outside (the builder, tests, the console). */
+    setScenario(next) {
+      linked = normalizeScenario(next);
+      if (panel && active) pick(LINK_ID);
+      else {
+        scenario = linked;
+        activeId = LINK_ID;
+        baseline = null;
+        if (panel) showScenario();
+      }
+    },
     getMeters: () => meters,
     getAllocation: () => allocation,
     getNetwork: () => network,

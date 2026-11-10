@@ -21,6 +21,9 @@ export function createApplicationPortEmissions({
     readVessels: () => vessels.getAnalystRecords(5000),
     overlayHost,
     requestRender: governorRequestRender,
-    twin: createPortTwin({ requestRender: governorRequestRender, overlayHost }),
+    twin: createPortTwin({
+      requestRender: governorRequestRender,
+      overlayHost,
+    }),
   });
 }

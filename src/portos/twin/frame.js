@@ -7,7 +7,7 @@
  *
  * Pure: no Cesium, no DOM.
  */
-import { rateSheetInput } from '../demandDriver.js';
+import { RATE_SHEETS, rateSheetInput } from '../demandDriver.js';
 import { DEFAULT_SCENARIO } from '../scenario.js';
 import { FACTORS, SPECS } from '../hueneme.js';
 import { STEPS_PER_HOUR } from '../touCalendar.js';
@@ -28,29 +28,86 @@ export const DEFAULT_DECISIONS = Object.freeze({
   rate: 'tou8', // key of RATE_SHEETS
 });
 
+const BATTERY_1MWH = Object.freeze({
+  kwh: 1000,
+  kw: 500,
+  roundTripEfficiency: 0.88,
+  thresholdKw: 'auto',
+});
+
+/**
+ * A scenario with some panel decisions applied on top. Anything the panel
+ * has no control for (other equipment, the rate, call volume...) is kept,
+ * so a scenario made in the builder survives a toggle in the twin.
+ */
+export function applyDecisions(scenario, patch = {}) {
+  const next = { ...scenario, fleet: { ...scenario.fleet } };
+  if ('year' in patch) next.year = patch.year;
+  if ('charging' in patch) next.strategy = patch.charging;
+  if ('shorePower' in patch) next.shorePower = Boolean(patch.shorePower);
+  if (patch.utrs === 'plan') delete next.fleet.utr;
+  if (patch.utrs === 'diesel')
+    next.fleet.utr = { diesel: UTR_UNITS, electric: 0, chargers: 0 };
+  if (patch.utrs === 'electric')
+    next.fleet.utr = { diesel: 0, electric: UTR_UNITS, chargers: UTR_UNITS };
+  if (patch.cranes === 'plan') delete next.fleet.harbor_crane;
+  if (patch.cranes === 'diesel')
+    next.fleet.harbor_crane = { diesel: CRANE_UNITS, electric: 0, chargers: 0 };
+  if (patch.cranes === 'plug-in')
+    next.fleet.harbor_crane = {
+      diesel: 0,
+      electric: CRANE_UNITS,
+      chargers: CRANE_UNITS,
+    };
+  if (patch.battery === 'none') next.battery = null;
+  if (patch.battery === '1mwh') next.battery = { ...BATTERY_1MWH };
+  if (patch.rate in RATE_SHEETS)
+    Object.assign(next, rateSheetInput(patch.rate));
+  return next;
+}
+
+/** The rate sheet a scenario is billed on, or 'custom' if it is not listed. */
+function rateSheetKey(scenario) {
+  const match = Object.entries(RATE_SHEETS).find(
+    ([, sheet]) =>
+      sheet.tariffId === scenario.tariffId &&
+      sheet.includeDeferredDemand === Boolean(scenario.includeDeferredDemand),
+  );
+  return match ? match[0] : 'custom';
+}
+
 /** Scenario input for a set of panel decisions. */
 export function scenarioFromDecisions(decisions = {}) {
-  const d = { ...DEFAULT_DECISIONS, ...decisions };
-  const fleet = {};
-  if (d.utrs === 'diesel') fleet.utr = { diesel: UTR_UNITS, electric: 0 };
-  if (d.utrs === 'electric')
-    fleet.utr = { diesel: 0, electric: UTR_UNITS, chargers: UTR_UNITS };
-  if (d.cranes === 'diesel')
-    fleet.harbor_crane = { diesel: CRANE_UNITS, electric: 0 };
-  if (d.cranes === 'plug-in')
-    fleet.harbor_crane = { diesel: 0, electric: CRANE_UNITS };
+  return applyDecisions(
+    { ...DEFAULT_SCENARIO, name: 'Twin scenario', fleet: {}, battery: null },
+    { ...DEFAULT_DECISIONS, ...decisions },
+  );
+}
+
+/**
+ * What the panel's controls should show for a scenario; 'custom' where the
+ * scenario holds something the control has no option for.
+ */
+export function decisionsFromScenario(scenario) {
+  const mix = (entry, units, allElectric) => {
+    if (!entry) return 'plan';
+    if (entry.electric === 0 && entry.diesel === units) return 'diesel';
+    if (entry.diesel === 0 && entry.electric === units) return allElectric;
+    return 'custom';
+  };
+  const b = scenario.battery;
   return {
-    ...DEFAULT_SCENARIO,
-    name: 'Twin scenario',
-    ...rateSheetInput(d.rate),
-    year: d.year,
-    strategy: d.charging,
-    fleet,
-    shorePower: Boolean(d.shorePower),
-    battery:
-      d.battery === '1mwh'
-        ? { kwh: 1000, kw: 500, roundTripEfficiency: 0.88, thresholdKw: 'auto' }
-        : null,
+    year: scenario.year,
+    utrs: mix(scenario.fleet?.utr, UTR_UNITS, 'electric'),
+    cranes: mix(scenario.fleet?.harbor_crane, CRANE_UNITS, 'plug-in'),
+    charging: scenario.strategy,
+    battery: !b
+      ? 'none'
+      : b.kwh === BATTERY_1MWH.kwh && b.kw === BATTERY_1MWH.kw
+        ? '1mwh'
+        : 'custom',
+    shorePower: Boolean(scenario.shorePower),
+    rate: rateSheetKey(scenario),
   };
 }
 
