@@ -430,9 +430,21 @@ export const HUENEME_REGISTRY = Object.freeze({
     ...fleetAssets('utr', 25, 2),
     ...fleetAssets('forklift_class_v', 3, 0),
     // Four Liebherr mobile harbor cranes (Ports America). Press releases name
-    // the 2013 LHM 420 and plug-in hybrids delivered in 2019 and 2022; port
-    // staff confirmed the fourth is also a hybrid.
-    ...fleetAssets('harbor_crane', 1, 3, 'hybrid'),
+    // the 2013 LHM 420 and plug-in hybrids delivered in 2019 and 2022. Port
+    // staff confirmed all of them plug into the berth's utility-grade shore
+    // power, the same service the ships use: diesel only to drive between
+    // spots. Cranes 1-2 work berth 1, cranes 3-4 berth 2 (twin layout).
+    ...fleetAssets('harbor_crane', 0, 4, 'hybrid').map((crane, i) => ({
+      ...crane,
+      label: `Crane ${i + 1}`,
+      make: 'Liebherr',
+      homeId: i < 2 ? 'berth-1' : 'berth-2',
+      meterId: 'meter-che',
+      source:
+        'Port staff (2026-11-10): every crane plugs into the berth shore power service',
+      notes:
+        'Plugs into the berth shore power service shared with ships. In the public seed that service is the placeholder meter; the real meter link goes in the private overlay.',
+    })),
     ...fleetAssets('reach_stacker', 3, 0),
   ],
 });

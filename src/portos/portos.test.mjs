@@ -27,7 +27,18 @@ test('the Hueneme seed registry validates and matches the 2023 workbook fleet', 
   const summary = inventorySummary(HUENEME_REGISTRY);
   assert.deepEqual(summary.utr, { diesel: 25, electric: 2 });
   assert.equal(summary.berth.none, 9);
-  assert.deepEqual(summary.mobile_harbor_crane, { diesel: 1, hybrid: 3 });
+  assert.deepEqual(summary.mobile_harbor_crane, { hybrid: 4 });
+  // Every crane plugs into the berth shore power service the ships use.
+  for (const crane of HUENEME_REGISTRY.assets.filter(
+    (asset) => asset.class === 'mobile_harbor_crane',
+  )) {
+    assert.ok(['berth-1', 'berth-2'].includes(crane.homeId));
+    const vault = HUENEME_REGISTRY.assets.find(
+      (asset) =>
+        asset.class === 'shore_power' && asset.berthId === crane.homeId,
+    );
+    assert.equal(crane.meterId, vault.meterId);
+  }
 });
 
 test('registry validation reports bad classes, references and duplicates', () => {
@@ -46,11 +57,26 @@ test('registry validation reports bad classes, references and duplicates', () =>
 
 test('SCE TOU periods follow the 4-9 p.m. structure and observed holidays', () => {
   const tariff = TARIFFS['SCE-TOU-8-D'];
-  assert.equal(touPeriod(tariff, { month: 7, hour: 17, weekday: true }).period, 'on');
-  assert.equal(touPeriod(tariff, { month: 7, hour: 17, weekday: false }).period, 'mid');
-  assert.equal(touPeriod(tariff, { month: 1, hour: 17, weekday: true }).period, 'mid');
-  assert.equal(touPeriod(tariff, { month: 1, hour: 10, weekday: true }).period, 'super_off');
-  assert.equal(touPeriod(tariff, { month: 7, hour: 10, weekday: true }).period, 'off');
+  assert.equal(
+    touPeriod(tariff, { month: 7, hour: 17, weekday: true }).period,
+    'on',
+  );
+  assert.equal(
+    touPeriod(tariff, { month: 7, hour: 17, weekday: false }).period,
+    'mid',
+  );
+  assert.equal(
+    touPeriod(tariff, { month: 1, hour: 17, weekday: true }).period,
+    'mid',
+  );
+  assert.equal(
+    touPeriod(tariff, { month: 1, hour: 10, weekday: true }).period,
+    'super_off',
+  );
+  assert.equal(
+    touPeriod(tariff, { month: 7, hour: 10, weekday: true }).period,
+    'off',
+  );
   // July 4, 2027 is a Sunday, so Monday July 5 is the observed holiday.
   assert.ok(sceHolidays(2027).has('7-5'));
   assert.ok(sceHolidays(2026).has('11-26')); // Thanksgiving 2026
@@ -71,7 +97,10 @@ test('a BEV UTR draws 12.5 kWh per working hour and recharges 50 kWh at break (w
   });
   assert.equal(result.meanSoc[12 * 4 - 1], (180 - 4 * 12.5) / 180);
   // Charging at 50 kW for the noon hour returns exactly the 50 kWh used.
-  const noonKwh = [0, 1, 2, 3].reduce((sum, i) => sum + result.gridKw[48 + i] / 4, 0);
+  const noonKwh = [0, 1, 2, 3].reduce(
+    (sum, i) => sum + result.gridKw[48 + i] / 4,
+    0,
+  );
   assert.equal(noonKwh, 50);
   assert.equal(result.meanSoc[13 * 4 - 1], 1);
 });
@@ -120,14 +149,30 @@ test('avoid-peak charging defers charging out of 4-9 p.m. above the reserve', ()
     s >= 16 * 4 && s < 21 * 4 ? 'on' : 'off',
   );
   const run = (strategy) =>
-    simulateFleet({ demand, spec: SPECS.utr, electric: 1, diesel: 0, periods, strategy });
+    simulateFleet({
+      demand,
+      spec: SPECS.utr,
+      electric: 1,
+      diesel: 0,
+      periods,
+      strategy,
+    });
   assert.ok(run('asap').gridKw[16 * 4] > 0);
   assert.equal(run('avoid-peak').gridKw[16 * 4], 0);
   assert.ok(run('avoid-peak').gridKw[21 * 4] > 0);
 });
 
 test('crew templates put workbook unit counts to work only in NS/DS slots', () => {
-  const calls = [{ id: 'c', type: 'Refrigerated', berthId: 'berth-1', start: 0, end: STEPS, template: '2G + 1H + DV' }];
+  const calls = [
+    {
+      id: 'c',
+      type: 'Refrigerated',
+      berthId: 'berth-1',
+      start: 0,
+      end: STEPS,
+      template: '2G + 1H + DV',
+    },
+  ];
   const demand = equipmentDemand(calls, {
     totalSteps: STEPS,
     slots: SHIFT_SLOTS,
@@ -147,28 +192,44 @@ test('the synthetic schedule is reproducible and honors berths and crew limits',
   assert.deepEqual(a, b);
   assert.ok(a.length > 200 && a.length < 260);
   const byBerth = new Map();
-  for (const call of a) (byBerth.get(call.berthId) ?? byBerth.set(call.berthId, []).get(call.berthId)).push(call);
+  for (const call of a)
+    (
+      byBerth.get(call.berthId) ??
+      byBerth.set(call.berthId, []).get(call.berthId)
+    ).push(call);
   for (const calls of byBerth.values()) {
     calls.sort((x, y) => x.start - y.start);
-    for (let i = 1; i < calls.length; i += 1) assert.ok(calls[i].start >= calls[i - 1].end);
+    for (let i = 1; i < calls.length; i += 1)
+      assert.ok(calls[i].start >= calls[i - 1].end);
   }
-  const reefers = a.filter((call) => call.type === 'Refrigerated').sort((x, y) => x.start - y.start);
-  for (let i = 1; i < reefers.length; i += 1) assert.ok(reefers[i].start >= reefers[i - 1].end);
+  const reefers = a
+    .filter((call) => call.type === 'Refrigerated')
+    .sort((x, y) => x.start - y.start);
+  for (let i = 1; i < reefers.length; i += 1)
+    assert.ok(reefers[i].start >= reefers[i - 1].end);
 });
 
 test('billing applies FRD to the monthly max and TRD to weekday peak windows only', () => {
   const calendar = yearSteps(2026);
   const kw = new Float64Array(calendar.length).fill(100);
   // A 900 kW spike on Saturday July 4 at 5 p.m. (a holiday and a weekend).
-  const holidaySpike = calendar.findIndex((s) => s.month === 7 && s.day === 4 && s.hour === 17);
+  const holidaySpike = calendar.findIndex(
+    (s) => s.month === 7 && s.day === 4 && s.hour === 17,
+  );
   kw[holidaySpike] = 900;
   // A 500 kW spike on Wednesday July 8 at 5 p.m. (summer on-peak weekday).
-  const peakSpike = calendar.findIndex((s) => s.month === 7 && s.day === 8 && s.hour === 17);
+  const peakSpike = calendar.findIndex(
+    (s) => s.month === 7 && s.day === 8 && s.hour === 17,
+  );
   kw[peakSpike] = 500;
   const tariff = TARIFFS['SCE-TOU-8-D'];
   const july = billByMonth(kw, tariff, calendar)[6];
-  const frd = july.lines.find((line) => line.label === 'Facilities-related demand');
-  const trd = july.lines.find((line) => line.label.startsWith('Time-related demand'));
+  const frd = july.lines.find(
+    (line) => line.label === 'Facilities-related demand',
+  );
+  const trd = july.lines.find((line) =>
+    line.label.startsWith('Time-related demand'),
+  );
   assert.equal(frd.kw, 900);
   assert.equal(trd.kw, 500);
   assert.equal(trd.amount, 500 * 25.68);
@@ -180,7 +241,10 @@ test('TOU-EV-9 bills no demand until authorized, with a sensitivity switch', () 
   const kw = new Float64Array(calendar.length).fill(400);
   const tariff = TARIFFS['SCE-TOU-EV-9'];
   assert.equal(billByMonth(kw, tariff, calendar)[0].demandCost, 0);
-  assert.ok(billByMonth(kw, tariff, calendar, { includeDeferredDemand: true })[0].demandCost > 0);
+  assert.ok(
+    billByMonth(kw, tariff, calendar, { includeDeferredDemand: true })[0]
+      .demandCost > 0,
+  );
 });
 
 test('a peak-shaving battery holds the meter at its threshold and recharges off-peak', () => {
@@ -188,7 +252,13 @@ test('a peak-shaving battery holds the meter at its threshold and recharges off-
   const periods = ['off', 'off', 'on', 'on', 'off', 'off'];
   const { netKw, soc } = dispatchBattery(
     load,
-    { kwh: 200, kw: 400, thresholdKw: 300, roundTripEfficiency: 1, chargePeriods: ['off'] },
+    {
+      kwh: 200,
+      kw: 400,
+      thresholdKw: 300,
+      roundTripEfficiency: 1,
+      chargePeriods: ['off'],
+    },
     periods,
   );
   assert.deepEqual(Array.from(netKw.slice(2, 4)), [300, 300]);
