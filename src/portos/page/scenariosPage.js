@@ -34,6 +34,7 @@ import {
   uniqueName,
   writeLibrary,
 } from '../scenarioStore.js';
+import { followNavRequest, mountSiteNav } from '../nav/siteNav.js';
 import { TARIFFS } from '../tariffs.js';
 import { STEPS_PER_DAY } from '../touCalendar.js';
 
@@ -227,6 +228,8 @@ app.innerHTML = `
     </div>
   </div>
 </div>`;
+mountSiteNav({ host: app.querySelector('.portos-wrap') });
+followNavRequest();
 
 const $ = (id) => document.getElementById(id);
 const storage = (() => {
