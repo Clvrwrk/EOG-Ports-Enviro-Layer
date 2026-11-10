@@ -1,6 +1,7 @@
 import { createStandaloneApplication } from './standalone/application.js';
 import { describeError } from './standalone/errors.js';
 import { t } from './i18n/index.js';
+import { followNavRequest, mountSiteNav } from './portos/nav/siteNav.js';
 
 // The Vite boundary exposes only undefined, null, or a validated URL.
 const photonSetting = import.meta.env.PHOTON_URL;
@@ -13,13 +14,21 @@ const application = createStandaloneApplication({
   allowQaRegistration: import.meta.env.DEV,
 });
 
-application.start().catch((error) => {
-  console.error("God's Eye View initialization failed:", error);
-  const loaderStatus = document.querySelector('#loading-screen .loader-status');
-  loaderStatus.textContent = t('Error: {message}', {
-    message: describeError(error),
+// Breadcrumb and page links over the globe (see src/portos/nav/siteNav.js).
+mountSiteNav({ variant: 'globe' });
+
+application
+  .start()
+  .then(() => followNavRequest())
+  .catch((error) => {
+    console.error("God's Eye View initialization failed:", error);
+    const loaderStatus = document.querySelector(
+      '#loading-screen .loader-status',
+    );
+    loaderStatus.textContent = t('Error: {message}', {
+      message: describeError(error),
+    });
+    loaderStatus.style.color = '#ff4444';
   });
-  loaderStatus.style.color = '#ff4444';
-});
 
 export { application };
