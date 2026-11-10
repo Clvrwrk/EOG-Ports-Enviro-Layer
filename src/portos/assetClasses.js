@@ -154,7 +154,6 @@ export const ASSET_GROUPS = Object.freeze({
   che: 'Cargo-handling equipment',
   harbor_craft: 'Tugs and harbor craft',
   rail: 'Locomotives',
-  trucks: 'Drayage trucks',
   electrical: 'Electrical',
 });
 
@@ -225,7 +224,7 @@ const RAW_CLASSES = Object.freeze({
 
   // Drayage trucks serving the port (owned by trucking companies, listed
   // so the EV planner and freight footprint can use the real fleet mix).
-  drayage_truck: assetClass('trucks', 'Drayage truck or truck fleet', [
+  drayage_truck: assetClass('landside', 'Drayage truck or truck fleet', [
     POWERTRAIN_FIELD,
     f('units', 'Trucks in this fleet', 'number', { required: true }),
     f('make', 'Make', 'text'),
