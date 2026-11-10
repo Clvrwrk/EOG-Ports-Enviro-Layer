@@ -708,3 +708,26 @@ test('every offered tool description fits OpenAI chat limit of 1024 characters',
     );
   }
 });
+
+test('an upstream refusal logs its status and short codes, never its message', async (t) => {
+  const logged = [];
+  t.mock.method(console, 'warn', (line) => logged.push(String(line)));
+  const f = await fixture(t, providers.openai, async () =>
+    Response.json(
+      {
+        error: {
+          message: 'Secret account detail req_123',
+          type: 'invalid_request_error',
+          param: 'tools[3].function.description',
+          code: 'string_above_max_length',
+        },
+      },
+      { status: 400 },
+    ),
+  );
+  const response = await f.send();
+  assert.equal(response.status, 502);
+  assert.deepEqual(logged, [
+    '[openai-chat] upstream HTTP 400 code=string_above_max_length type=invalid_request_error param=tools[3].function.description',
+  ]);
+});
