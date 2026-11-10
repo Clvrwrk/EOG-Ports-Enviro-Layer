@@ -23,6 +23,8 @@ export function escapeFsDenyPath(path) {
   return path.replace(/[()[\]{}*?!+@|]/g, '\\$&');
 }
 
+/** The site's HTML pages (repo root); a production build emits each one. */
+export const BUILD_PAGES = ['index', 'scenarios', 'ev-planning', 'admin'];
 const REPO_ROOT_GLOB = escapeFsDenyPath(REPO_ROOT);
 
 /**
@@ -259,6 +261,14 @@ export function createBrowserViteConfig({
         mapillaryToken ?? '',
       ),
     },
-    build: { chunkSizeWarningLimit: 1500 },
+    build: {
+      chunkSizeWarningLimit: 1500,
+      // Every page of the site, so a production build serves all of them.
+      rollupOptions: {
+        input: Object.fromEntries(
+          BUILD_PAGES.map((page) => [page, `${REPO_ROOT}/${page}.html`]),
+        ),
+      },
+    },
   };
 }

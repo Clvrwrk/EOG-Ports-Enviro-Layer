@@ -88,6 +88,47 @@ function readRouteTable() {
   }
 }
 
+/**
+ * Serve a production build unless GEV_SERVE_MODE=dev. The Vite dev server
+ * stamps every pre-bundled dependency with a per-process hash, so a page that
+ * loaded part of its modules from the container a deploy is replacing and the
+ * rest from the new one ran two copies of Vue and hung on the loading screen.
+ * A build has content-hashed files that never change under an open page.
+ * @param {NodeJS.ProcessEnv} [env]
+ * @returns {boolean}
+ */
+export function productionMode(env = process.env) {
+  return String(env.GEV_SERVE_MODE ?? '').trim().toLowerCase() !== 'dev';
+}
+
+/**
+ * Build at start, not in the image: the build bakes in the browser keys from
+ * the deploy's environment and copies the files mounted under public/private.
+ */
+async function startProductionServer({ build, preview }, port) {
+  console.log('[Docker] Building the site...');
+  await build({ root: ROOT, logLevel: 'warn' });
+  return preview({
+    root: ROOT,
+    preview: { host: '0.0.0.0', port, strictPort: true },
+  });
+}
+
+async function startDevServer({ createServer }, port) {
+  const server = await createServer({
+    root: ROOT,
+    server: {
+      // The container's own namespace. compose publishes this to the host's
+      // 127.0.0.1 only; widening that mapping is the LAN opt-in.
+      host: '0.0.0.0',
+      port,
+      strictPort: true,
+    },
+  });
+  await server.listen();
+  return server;
+}
+
 async function start() {
   let writable = true;
   try {
@@ -127,18 +168,10 @@ async function start() {
   }
 
   const port = Number.parseInt(process.env.PORT, 10) || 4173;
-  const { createServer } = await loadViteFromCanonicalRoot(ROOT);
-  const server = await createServer({
-    root: ROOT,
-    server: {
-      // The container's own namespace. compose publishes this to the host's
-      // 127.0.0.1 only; widening that mapping is the LAN opt-in.
-      host: '0.0.0.0',
-      port,
-      strictPort: true,
-    },
-  });
-  await server.listen();
+  const vite = await loadViteFromCanonicalRoot(ROOT);
+  const server = productionMode()
+    ? await startProductionServer(vite, port)
+    : await startDevServer(vite, port);
   server.printUrls();
   console.log(`[Docker] Ready at http://localhost:${port}/`);
 
