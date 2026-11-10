@@ -13,6 +13,8 @@
  */
 import { OSM_GEOMETRY } from './huenemeOsm.js';
 
+const TERMINAL_PLAN =
+  'Oxnard Harbor District, At Berth Regulation Port & Terminal Plan, revised May 2025';
 const PORT_STAFF = 'Port of Hueneme staff via Chris (2026-11-10)';
 const PORT_FACTS =
   'Port of Hueneme, About the Port: Port Facts (portofhueneme.org, read 2026-11-10)';
@@ -87,65 +89,89 @@ export function pathLengthM(path) {
 export const BERTH_DETAILS = Object.freeze({
   'berth-1': {
     label: 'Berth 1',
+    zone: 'South Terminal',
     wharf: 'Wharf 1',
+    operator: 'Port of Hueneme',
+    cargo: 'Reefer containers and tankers',
     lengthM: Math.round(900 * FT_TO_M),
     at: [34.147893, -119.206976],
-    source: `${PORT_FACTS}; position: ${SURVEY}`,
+    source: `${TERMINAL_PLAN}; length: ${PORT_FACTS}; position: ${SURVEY}`,
+    notes:
+      'Ship shore power for reefer vessels. The South Terminal system was destroyed in the Dec 21, 2023 storm and is being rebuilt for two ships at once, due late 2027 to early 2028; a STAX ECCS barge serves reefer calls until then. Plan boundary: 119°12\'31"W to 119°12\'21"W at 34°08\'51"N.',
   },
   'berth-2': {
     label: 'Berth 2',
+    zone: 'South Terminal',
     wharf: 'Wharf 1',
+    operator: 'Port of Hueneme',
+    cargo: 'Reefer containers and tankers',
     lengthM: Math.round(900 * FT_TO_M),
     at: [34.14785, -119.204461],
-    source: `${PORT_FACTS}; position: ${SURVEY}`,
+    source: `${TERMINAL_PLAN}; length: ${PORT_FACTS}; position: ${SURVEY}`,
+    notes:
+      'Ship shore power for reefer vessels, out of service since the Dec 21, 2023 storm and due back late 2027 to early 2028. Plan boundary: 119°12\'21"W to 119°12\'10"W at 34°08\'51"N.',
   },
   'berth-3': {
     label: 'Berth 3',
     source: `${PORT_FACTS}; use: ${PORT_STAFF}`,
     notes:
-      'Not used very often (port staff). No ship shore power: only Berths 1 and 2 have it (port staff). The port also lists Berth 3 for fishing vessels.',
+      'Not in the 2025 terminal plan, which names only Berths 1, 2, 4, 5 and the Navy Terminal. Port staff say it is rarely used; the port fact sheet lists it for fishing vessels. No ship shore power.',
   },
   'berth-4': {
     label: 'Berth 4 (RoRo)',
+    zone: 'North Terminal',
     wharf: 'Wharf 2',
+    operator: 'Port of Hueneme',
+    cargo: 'RoRo vehicles; reefer containers occasionally',
     lengthM: Math.round(700 * FT_TO_M),
-    source: `${PORT_FACTS}; use: ${PORT_STAFF}`,
-    notes: 'Predominantly the RoRo (vehicle carrier) berth.',
+    at: [34.148611, -119.204583],
+    source: `${TERMINAL_PLAN}; length: ${PORT_FACTS}`,
+    notes:
+      'Wharf 2 takes one RoRo ship at a time. Dual-voltage shore power with a mobile connection is planned for Berths 4 and 5, due Q1 2028; a STAX ECCS barge serves RoRo calls until then. Position is the middle of the plan boundary, 119°12\'21"W to 119°12\'12"W at 34°08\'55"N.',
   },
   'berth-5': {
-    label: 'Berth 5 (shared Navy/port)',
-    zone: 'Joint Use',
-    operator: 'Shared: US Navy and Port of Hueneme',
+    label: 'Berth 5',
+    zone: 'North Terminal',
     wharf: 'Wharf 2',
+    operator: 'Port of Hueneme',
+    cargo: 'RoRo vehicles; reefer containers occasionally',
     lengthM: Math.round(700 * FT_TO_M),
-    source: `${PORT_FACTS}; use: ${PORT_STAFF}`,
+    at: [34.148611, -119.202639],
+    source: `${TERMINAL_PLAN}; length: ${PORT_FACTS}`,
+    notes:
+      'Shares Wharf 2 with Berth 4 (one RoRo ship at a time); shore power planned for Q1 2028. Position is the middle of the plan boundary, 119°12\'12"W to 119°12\'07"W at 34°08\'55"N.',
   },
   'berth-6': {
-    label: 'Berth 6 (shared Navy/port)',
-    zone: 'Joint Use',
-    operator: 'Shared: US Navy and Port of Hueneme',
+    label: 'Berth 6 (Navy Terminal, joint use)',
+    zone: 'Navy Terminal',
+    operator: 'US Navy (Naval Base Ventura County), joint use with the port',
+    cargo: 'Low use: heavy lift and general cargo',
     lengthM: Math.round(1000 * FT_TO_M),
-    source: `${PORT_FACTS}; use: ${PORT_STAFF}`,
+    source: `${TERMINAL_PLAN}; length and joint use: ${PORT_FACTS}`,
+    notes:
+      'The plan treats the Navy Terminal as one low-use terminal on Naval Base Ventura County, outside port property and jurisdiction; the port needs Navy Port Operations approval for each call. Plan line: 34°08\'55"N to 34°09\'05"N at 119°12\'22"W.',
   },
   'berth-7': {
-    label: 'Berth 7 (US Navy)',
-    zone: 'US Navy',
+    label: 'Berth 7 (Navy Terminal)',
+    zone: 'Navy Terminal',
     operator: 'US Navy (Naval Base Ventura County)',
-    source: `${PORT_FACTS}; use: ${PORT_STAFF}`,
+    source: `${TERMINAL_PLAN}; ${PORT_FACTS}`,
     notes:
-      'US Navy berth. The port fact sheet lists Navy wharves 4 to 6 under a license agreement.',
+      'Navy wharf 4 in the port fact sheet (used under license). Low use; the port needs Navy approval for each call.',
   },
   'berth-8': {
-    label: 'Berth 8 (US Navy)',
-    zone: 'US Navy',
+    label: 'Berth 8 (Navy Terminal)',
+    zone: 'Navy Terminal',
     operator: 'US Navy (Naval Base Ventura County)',
-    source: `${PORT_FACTS}; use: ${PORT_STAFF}`,
+    source: `${TERMINAL_PLAN}; ${PORT_FACTS}`,
+    notes: 'Navy wharf 5 in the port fact sheet (used under license).',
   },
   'berth-9': {
-    label: 'Berth 9 (US Navy)',
-    zone: 'US Navy',
+    label: 'Berth 9 (Navy Terminal)',
+    zone: 'Navy Terminal',
     operator: 'US Navy (Naval Base Ventura County)',
-    source: `${PORT_FACTS}; use: ${PORT_STAFF}`,
+    source: `${TERMINAL_PLAN}; ${PORT_FACTS}`,
+    notes: 'Navy wharf 6 in the port fact sheet (used under license).',
   },
 });
 

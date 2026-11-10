@@ -234,7 +234,11 @@ test('cards show readable fields, notes and sources', () => {
   // Port staff: Hueneme calls need no pilot, so the seed has no pilot boat.
   assert.ok(!HUENEME_REGISTRY.assets.some((a) => a.craftType === 'pilot'));
   assert.equal(byId(HUENEME_REGISTRY, 'berth-4').label, 'Berth 4 (RoRo)');
-  assert.equal(byId(HUENEME_REGISTRY, 'berth-8').zone, 'US Navy');
+  // 2025 terminal plan: Berths 1-2 South Terminal, 4-5 North Terminal (POH),
+  // the rest on the Navy Terminal.
+  assert.equal(byId(HUENEME_REGISTRY, 'berth-5').zone, 'North Terminal');
+  assert.equal(byId(HUENEME_REGISTRY, 'berth-5').operator, 'Port of Hueneme');
+  assert.equal(byId(HUENEME_REGISTRY, 'berth-8').zone, 'Navy Terminal');
   // Port staff: only Berths 1 and 2 have ship shore power.
   assert.deepEqual(
     HUENEME_REGISTRY.assets

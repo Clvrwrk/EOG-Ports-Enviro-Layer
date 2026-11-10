@@ -219,7 +219,8 @@ export const CALL_PROFILE = Object.freeze([
     meanHours: 39.7,
     template: '2G + 1H + DV',
     maxConcurrent: 1,
-    berths: ['berth-1', 'berth-2', 'berth-3'],
+    // Reefer ships work the South Terminal, Berths 1-2 (2025 terminal plan).
+    berths: ['berth-1', 'berth-2'],
     cargo: 'break-bulk reefer',
   },
   {

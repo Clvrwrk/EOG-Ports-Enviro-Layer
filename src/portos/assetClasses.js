@@ -225,6 +225,7 @@ export const ASSET_CLASSES = Object.freeze({
     f('lengthM', 'Berth length', 'number', { unit: 'm' }),
     f('depthM', 'Depth alongside', 'number', { unit: 'm' }),
     f('wharf', 'Wharf', 'text'),
+    f('cargo', 'Main cargo', 'text'),
     ...AREA_FIELDS,
   ]),
   building: assetClass('fixed', 'Building', [
