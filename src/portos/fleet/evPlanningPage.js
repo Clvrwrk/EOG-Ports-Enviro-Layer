@@ -24,6 +24,7 @@ import {
   planQuery,
   resultView,
 } from './form.js';
+import { createGateLogSection } from './gateLogSection.js';
 import { runTrip } from './runTrip.js';
 
 const PAGE_CSS = `
@@ -77,6 +78,7 @@ app.innerHTML = `
     <div class="chart-head"><h3>Elevation along the trip (m)</h3></div>
     <div class="chart" id="elevChart"></div>
   </section>
+  <div id="gateHost"></div>
   <section class="card">
     <h2>Fleet catalog</h2>
     <p class="sub">Every model the port inventory, the scenario tools and this planner draw on. Electric trucks carry FleetVolt's physics; port equipment comes from the POH utilization workbook; ships are grouped from the POH ship inventory. Figures marked estimated are planning placeholders.</p>
@@ -107,6 +109,7 @@ const form = createEvForm(async (request) => {
   }
 }, linked ?? {});
 $('formHost').append(form.root);
+$('gateHost').replaceWith(createGateLogSection());
 if (linked) form.root.requestSubmit();
 
 /** Evenly thin a list to at most `max` items, keeping the last. */
