@@ -647,6 +647,11 @@ export const LAYER_STATE_REGISTRY = Object.freeze([
     optionOwner: 'flights',
   }),
   Object.freeze({
+    id: 'freight-footprint',
+    token: '01',
+    disposition: 'enabled-only',
+  }),
+  Object.freeze({
     id: 'gnss-integrity',
     token: '3',
     disposition: 'enabled-only',
@@ -668,11 +673,6 @@ export const LAYER_STATE_REGISTRY = Object.freeze([
     token: 'm',
     disposition: 'enabled+mirrored-options',
     optionOwner: 'flights',
-  }),
-  Object.freeze({
-    id: 'freight-footprint',
-    token: '01',
-    disposition: 'enabled-only',
   }),
   Object.freeze({
     id: 'military-awareness',
