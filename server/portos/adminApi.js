@@ -16,7 +16,10 @@
  */
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { validateRegistry } from '../../src/portos/assetClasses.js';
+import {
+  migrateAsset,
+  validateRegistry,
+} from '../../src/portos/assetClasses.js';
 import { HUENEME_REGISTRY } from '../../src/portos/hueneme.js';
 import { AdminError, openAdminStore } from './adminStore.js';
 import {
@@ -110,6 +113,7 @@ export function createAdminHandler({
           dir: settings.dataDir,
           seed: HUENEME_REGISTRY,
           validate: validateRegistry,
+          migrate: migrateAsset,
           now,
         });
     return store;

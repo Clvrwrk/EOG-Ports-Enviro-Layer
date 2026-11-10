@@ -4,7 +4,8 @@
  * Excel (.xlsx) reading, CSV writing, and describing a change for the
  * history view. No DOM, so the same code runs in tests.
  */
-import { ASSET_CLASSES } from '../assetClasses.js';
+import { ASSET_CLASSES, readValue, tidyText } from '../assetClasses.js';
+import { fleetModel } from '../fleet/catalog.js';
 
 /**
  * Every field an asset of `cls` can carry, in form order. Classes declare
@@ -68,49 +69,66 @@ export function parsePointList(text) {
  */
 export function parseValue(field, input) {
   if (input === undefined || input === null) return { value: undefined };
-  if (typeof input !== 'string') input = String(input);
-  const text = input.trim();
+  if (!['point', 'area', 'line'].includes(field.type))
+    return readValue(field, input);
+  const text = String(input).trim();
   if (!text) return { value: undefined };
-  switch (field.type) {
-    case 'number':
-    case 'year': {
-      const value = Number(text.replace(/,/g, ''));
-      if (!Number.isFinite(value)) return { error: 'must be a number' };
-      if (field.type === 'year' && !Number.isInteger(value))
-        return { error: 'must be a whole year' };
-      return { value };
-    }
-    case 'bool': {
-      const lower = text.toLowerCase();
-      if (['true', 'yes', 'y', '1', 'x'].includes(lower))
-        return { value: true };
-      if (['false', 'no', 'n', '0'].includes(lower)) return { value: false };
-      return { error: 'must be yes or no' };
-    }
-    case 'enum': {
-      const lower = text.toLowerCase();
-      const option = field.options?.find(
-        (o) =>
-          String(o.value).toLowerCase() === lower ||
-          String(o.label).toLowerCase() === lower,
-      );
-      return option ? { value: option.value } : { error: 'is not an option' };
-    }
-    case 'point': {
-      const value = parsePoint(text);
-      return value ? { value } : { error: 'must be "lat, lon"' };
-    }
-    case 'area':
-    case 'line': {
-      const value = parsePointList(text);
-      const min = field.type === 'area' ? 3 : 2;
-      return value && value.length >= min
-        ? { value }
-        : { error: `must be ${min}+ points "lat, lon; lat, lon; ..."` };
-    }
-    default:
-      return { value: text };
+  if (field.type === 'point') {
+    const value = parsePoint(text);
+    return value ? { value } : { error: 'must be "lat, lon"' };
   }
+  const value = parsePointList(text);
+  const min = field.type === 'area' ? 3 : 2;
+  return value && value.length >= min
+    ? { value }
+    : { error: `must be ${min}+ points "lat, lon; lat, lon; ..."` };
+}
+
+/**
+ * The values already used for a `choice` field across every asset, sorted,
+ * so a form offers "Oxnard Harbor District" instead of a blank box.
+ */
+export function choiceValues(assets, key) {
+  const seen = new Map();
+  for (const asset of assets || []) {
+    const value = asset?.[key];
+    if (typeof value !== 'string' || !value.trim()) continue;
+    const tidy = tidyText(value);
+    const folded = tidy.toLowerCase();
+    if (!seen.has(folded)) seen.set(folded, tidy);
+  }
+  return [...seen.values()].sort((a, b) => a.localeCompare(b));
+}
+
+/**
+ * A new `choice` entry, snapped to an existing value that differs only in
+ * case or spacing ("oxnard harbor district " becomes "Oxnard Harbor
+ * District"), so one name is never stored two ways.
+ */
+export function snapChoice(text, known) {
+  const tidy = tidyText(text ?? '');
+  if (!tidy) return '';
+  const folded = tidy.toLowerCase();
+  return known.find((value) => value.toLowerCase() === folded) ?? tidy;
+}
+
+const CATALOG_FILLS = ['powertrain', 'make', 'model', 'ratedKw'];
+
+/**
+ * The fields a fleet catalog model fills in on an asset of class `cls`:
+ * powertrain, make, model and rated power, where the class has that field
+ * and the catalog knows the value. Picking from the catalog means these
+ * are never typed.
+ */
+export function catalogFill(cls, catalogId) {
+  const model = catalogId ? fleetModel(catalogId) : null;
+  if (!model) return {};
+  const keys = new Set((ASSET_CLASSES[cls]?.fields || []).map((f) => f.key));
+  return Object.fromEntries(
+    CATALOG_FILLS.filter((key) => keys.has(key) && model[key] != null).map(
+      (key) => [key, model[key]],
+    ),
+  );
 }
 
 /** Show a stored value as text (form inputs, tables, CSV cells). */
@@ -119,6 +137,8 @@ export function formatValue(field, value) {
   switch (field?.type) {
     case 'bool':
       return value ? 'yes' : 'no';
+    case 'multi':
+      return Array.isArray(value) ? value.join('; ') : String(value);
     case 'point':
       return Array.isArray(value) ? value.join(', ') : String(value);
     case 'area':
@@ -138,6 +158,10 @@ export function displayValue(field, value) {
     const option = field.options?.find((o) => o.value === value);
     return option ? option.label : String(value);
   }
+  if (field?.type === 'multi' && Array.isArray(value))
+    return value
+      .map((v) => field.options?.find((o) => o.value === v)?.label ?? v)
+      .join(', ');
   if (field?.type === 'area') return `${value.length}-point outline`;
   if (field?.type === 'line') return `${value.length}-point line`;
   return formatValue(field, value);

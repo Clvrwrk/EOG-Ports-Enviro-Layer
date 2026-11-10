@@ -223,6 +223,8 @@ export function createTwinPanel(
     ),
   );
   const layerBoxes = new Map();
+  // The EV Planning section (fleet/twinSection.js) mounts here.
+  const evHost = el('div', { class: 'ev-host' });
   const layerBox = el(
     'fieldset',
     { class: 'layers' },
@@ -547,6 +549,7 @@ export function createTwinPanel(
       el('label', {}, 'STAX capture barge', controls.stax),
     ),
     el('label', {}, 'Rate sheet', controls.rate),
+    evHost,
     el('fieldset', {}, boardTitle, board),
     driverBox,
     layerBox,
@@ -596,6 +599,8 @@ export function createTwinPanel(
   let card = null;
 
   return {
+    /** Where the EV Planning section mounts. */
+    evHost,
     /** Whether the menu panel holding the controls is open (true if none). */
     isOpen,
     /** Show the controls for a running twin, or just the on switch. */

@@ -38,12 +38,20 @@ export const NAV_LINKS = Object.freeze([
     href: `/scenarios?${INTERVIEW_PARAM}=1`,
   },
   { id: 'compare', label: 'Compare', href: '/scenarios#compare' },
+  {
+    id: 'ev',
+    label: 'EV Planning',
+    href: '/ev-planning',
+    title:
+      'Battery-electric drayage trips, charging load and the fleet catalog',
+  },
   { id: 'admin', label: 'Asset admin', href: '/admin' },
 ]);
 
 const PAGE_LABELS = Object.freeze({
   scenarios: 'Scenario builder',
   admin: 'Asset admin',
+  ev: 'EV Planning',
 });
 
 const trimPath = (pathname) =>
@@ -52,7 +60,7 @@ const trimPath = (pathname) =>
     .replace(/\/+$/, '') || '/';
 
 /**
- * Which page a path is: 'globe', 'twin', 'scenarios', 'admin' or null for a
+ * Which page a path is: 'globe', 'twin', 'scenarios', 'admin', 'ev' or null for a
  * path this bar does not know.
  */
 export function currentPage(pathname) {
@@ -61,6 +69,7 @@ export function currentPage(pathname) {
   if (path === PORT.path) return 'twin';
   if (path === '/scenarios') return 'scenarios';
   if (path === '/admin') return 'admin';
+  if (path === '/ev-planning') return 'ev';
   return null;
 }
 

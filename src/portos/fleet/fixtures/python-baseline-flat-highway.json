@@ -1,0 +1,571 @@
+{
+  "segments": [
+    {
+      "dist_m": 150,
+      "grade": 0,
+      "speed": 55,
+      "energy_kwh": 0.2149,
+      "soc_pct": 99.95,
+      "charging_event": false
+    },
+    {
+      "dist_m": 150,
+      "grade": -8.6667,
+      "speed": 55,
+      "energy_kwh": 0.0169,
+      "soc_pct": 99.94,
+      "charging_event": false
+    },
+    {
+      "dist_m": 300,
+      "grade": -1.3333,
+      "speed": 55,
+      "energy_kwh": 0.0484,
+      "soc_pct": 99.93,
+      "charging_event": false
+    },
+    {
+      "dist_m": 900,
+      "grade": -10.3889,
+      "speed": 55,
+      "energy_kwh": 0.1017,
+      "soc_pct": 99.9,
+      "charging_event": false
+    },
+    {
+      "dist_m": 13200,
+      "grade": -0.0644,
+      "speed": 55,
+      "energy_kwh": 18.1024,
+      "soc_pct": 95.31,
+      "charging_event": false
+    },
+    {
+      "dist_m": 150,
+      "grade": 9.3333,
+      "speed": 55,
+      "energy_kwh": 1.5437,
+      "soc_pct": 94.92,
+      "charging_event": false
+    },
+    {
+      "dist_m": 1243.44,
+      "grade": 1.1048,
+      "speed": 55,
+      "energy_kwh": 3.0915,
+      "soc_pct": 94.13,
+      "charging_event": false
+    },
+    {
+      "dist_m": 1500,
+      "grade": 0.7931,
+      "speed": 55,
+      "energy_kwh": 3.2836,
+      "soc_pct": 93.3,
+      "charging_event": false
+    },
+    {
+      "dist_m": 150,
+      "grade": 6.5157,
+      "speed": 55,
+      "energy_kwh": 1.1447,
+      "soc_pct": 93.01,
+      "charging_event": false
+    },
+    {
+      "dist_m": 3600,
+      "grade": 1.0268,
+      "speed": 55,
+      "energy_kwh": 8.6827,
+      "soc_pct": 90.8,
+      "charging_event": false
+    },
+    {
+      "dist_m": 150,
+      "grade": 9.84,
+      "speed": 55,
+      "energy_kwh": 1.6152,
+      "soc_pct": 90.39,
+      "charging_event": false
+    },
+    {
+      "dist_m": 600,
+      "grade": -0.0739,
+      "speed": 55,
+      "energy_kwh": 0.8174,
+      "soc_pct": 90.19,
+      "charging_event": false
+    },
+    {
+      "dist_m": 150,
+      "grade": 14.208,
+      "speed": 55,
+      "energy_kwh": 2.226,
+      "soc_pct": 89.62,
+      "charging_event": false
+    },
+    {
+      "dist_m": 150,
+      "grade": 2.1237,
+      "speed": 55,
+      "energy_kwh": 0.5186,
+      "soc_pct": 89.49,
+      "charging_event": false
+    },
+    {
+      "dist_m": 150,
+      "grade": 6.368,
+      "speed": 55,
+      "energy_kwh": 1.1237,
+      "soc_pct": 89.21,
+      "charging_event": false
+    },
+    {
+      "dist_m": 600,
+      "grade": -0.3024,
+      "speed": 55,
+      "energy_kwh": 0.6867,
+      "soc_pct": 89.03,
+      "charging_event": false
+    },
+    {
+      "dist_m": 300,
+      "grade": 13.0648,
+      "speed": 55,
+      "energy_kwh": 4.1343,
+      "soc_pct": 87.98,
+      "charging_event": false
+    },
+    {
+      "dist_m": 300,
+      "grade": -4.8643,
+      "speed": 55,
+      "energy_kwh": -0.6064,
+      "soc_pct": 88.14,
+      "charging_event": false
+    },
+    {
+      "dist_m": 150,
+      "grade": -6.9381,
+      "speed": 55,
+      "energy_kwh": -0.3982,
+      "soc_pct": 88.24,
+      "charging_event": false
+    },
+    {
+      "dist_m": 600,
+      "grade": -2.914,
+      "speed": 55,
+      "energy_kwh": -0.4956,
+      "soc_pct": 88.36,
+      "charging_event": false
+    },
+    {
+      "dist_m": 150,
+      "grade": 6.2261,
+      "speed": 55,
+      "energy_kwh": 1.1036,
+      "soc_pct": 88.08,
+      "charging_event": false
+    },
+    {
+      "dist_m": 1050,
+      "grade": -1.9121,
+      "speed": 55,
+      "energy_kwh": -0.2217,
+      "soc_pct": 88.14,
+      "charging_event": false
+    },
+    {
+      "dist_m": 300,
+      "grade": 7.368,
+      "speed": 55,
+      "energy_kwh": 2.5314,
+      "soc_pct": 87.5,
+      "charging_event": false
+    },
+    {
+      "dist_m": 150,
+      "grade": -1.3515,
+      "speed": 55,
+      "energy_kwh": 0.0216,
+      "soc_pct": 87.49,
+      "charging_event": false
+    },
+    {
+      "dist_m": 300,
+      "grade": -7.954,
+      "speed": 55,
+      "energy_kwh": -0.7965,
+      "soc_pct": 87.69,
+      "charging_event": false
+    },
+    {
+      "dist_m": 5743.44,
+      "grade": -0.385,
+      "speed": 55,
+      "energy_kwh": 6.1207,
+      "soc_pct": 86.14,
+      "charging_event": false
+    },
+    {
+      "dist_m": 16093.44,
+      "grade": -0.0016,
+      "speed": 55,
+      "energy_kwh": 23.0342,
+      "soc_pct": 80.29,
+      "charging_event": false
+    },
+    {
+      "dist_m": 1350,
+      "grade": -0.2574,
+      "speed": 55,
+      "energy_kwh": 1.6029,
+      "soc_pct": 79.89,
+      "charging_event": false
+    },
+    {
+      "dist_m": 150,
+      "grade": 6.1963,
+      "speed": 55,
+      "energy_kwh": 1.0993,
+      "soc_pct": 79.61,
+      "charging_event": false
+    },
+    {
+      "dist_m": 1950,
+      "grade": 0.0135,
+      "speed": 55,
+      "energy_kwh": 2.8191,
+      "soc_pct": 78.89,
+      "charging_event": false
+    },
+    {
+      "dist_m": 150,
+      "grade": 6.5792,
+      "speed": 55,
+      "energy_kwh": 1.1538,
+      "soc_pct": 78.6,
+      "charging_event": false
+    },
+    {
+      "dist_m": 450,
+      "grade": 0.6012,
+      "speed": 55,
+      "energy_kwh": 0.9027,
+      "soc_pct": 78.37,
+      "charging_event": false
+    },
+    {
+      "dist_m": 150,
+      "grade": 11.3216,
+      "speed": 55,
+      "energy_kwh": 1.8234,
+      "soc_pct": 77.91,
+      "charging_event": false
+    },
+    {
+      "dist_m": 1800,
+      "grade": -0.0865,
+      "speed": 55,
+      "energy_kwh": 2.4306,
+      "soc_pct": 77.29,
+      "charging_event": false
+    },
+    {
+      "dist_m": 150,
+      "grade": 8.896,
+      "speed": 55,
+      "energy_kwh": 1.482,
+      "soc_pct": 76.91,
+      "charging_event": false
+    },
+    {
+      "dist_m": 6000,
+      "grade": -0.547,
+      "speed": 55,
+      "energy_kwh": 5.4672,
+      "soc_pct": 75.53,
+      "charging_event": false
+    },
+    {
+      "dist_m": 150,
+      "grade": -6.5131,
+      "speed": 55,
+      "energy_kwh": -0.3982,
+      "soc_pct": 75.63,
+      "charging_event": false
+    },
+    {
+      "dist_m": 3793.44,
+      "grade": 0.6008,
+      "speed": 55,
+      "energy_kwh": 7.6085,
+      "soc_pct": 73.7,
+      "charging_event": false
+    },
+    {
+      "dist_m": 16093.44,
+      "grade": 0.5321,
+      "speed": 55,
+      "energy_kwh": 31.2243,
+      "soc_pct": 65.77,
+      "charging_event": false
+    },
+    {
+      "dist_m": 7050,
+      "grade": 1.8116,
+      "speed": 55,
+      "energy_kwh": 22.2774,
+      "soc_pct": 60.12,
+      "charging_event": false
+    },
+    {
+      "dist_m": 150,
+      "grade": 7.9093,
+      "speed": 55,
+      "energy_kwh": 1.3424,
+      "soc_pct": 59.78,
+      "charging_event": false
+    },
+    {
+      "dist_m": 1050,
+      "grade": 0.7916,
+      "speed": 55,
+      "energy_kwh": 2.297,
+      "soc_pct": 59.19,
+      "charging_event": false
+    },
+    {
+      "dist_m": 150,
+      "grade": 6.4107,
+      "speed": 55,
+      "energy_kwh": 1.1298,
+      "soc_pct": 58.91,
+      "charging_event": false
+    },
+    {
+      "dist_m": 1050,
+      "grade": 2.9989,
+      "speed": 55,
+      "energy_kwh": 4.5055,
+      "soc_pct": 57.76,
+      "charging_event": false
+    },
+    {
+      "dist_m": 600,
+      "grade": 8.94,
+      "speed": 55,
+      "energy_kwh": 5.9529,
+      "soc_pct": 56.25,
+      "charging_event": false
+    },
+    {
+      "dist_m": 300,
+      "grade": -0.296,
+      "speed": 55,
+      "energy_kwh": 0.3452,
+      "soc_pct": 56.16,
+      "charging_event": false
+    },
+    {
+      "dist_m": 300,
+      "grade": 12.5093,
+      "speed": 55,
+      "energy_kwh": 3.9793,
+      "soc_pct": 55.15,
+      "charging_event": false
+    },
+    {
+      "dist_m": 4800,
+      "grade": 0.502,
+      "speed": 55,
+      "energy_kwh": 9.1751,
+      "soc_pct": 52.83,
+      "charging_event": false
+    },
+    {
+      "dist_m": 150,
+      "grade": 7.104,
+      "speed": 55,
+      "energy_kwh": 1.2283,
+      "soc_pct": 52.51,
+      "charging_event": false
+    },
+    {
+      "dist_m": 493.44,
+      "grade": 3.1297,
+      "speed": 55,
+      "energy_kwh": 2.1788,
+      "soc_pct": 51.96,
+      "charging_event": false
+    },
+    {
+      "dist_m": 450,
+      "grade": 2.9724,
+      "speed": 55,
+      "energy_kwh": 1.9196,
+      "soc_pct": 51.47,
+      "charging_event": false
+    },
+    {
+      "dist_m": 150,
+      "grade": 6.5248,
+      "speed": 55,
+      "energy_kwh": 1.146,
+      "soc_pct": 51.18,
+      "charging_event": false
+    },
+    {
+      "dist_m": 5250,
+      "grade": 1.9026,
+      "speed": 55,
+      "energy_kwh": 17.0448,
+      "soc_pct": 46.86,
+      "charging_event": false
+    },
+    {
+      "dist_m": 150,
+      "grade": 6.5344,
+      "speed": 55,
+      "energy_kwh": 1.1474,
+      "soc_pct": 46.57,
+      "charging_event": false
+    },
+    {
+      "dist_m": 150,
+      "grade": 2.4491,
+      "speed": 55,
+      "energy_kwh": 0.5651,
+      "soc_pct": 46.42,
+      "charging_event": false
+    },
+    {
+      "dist_m": 450,
+      "grade": 7.5335,
+      "speed": 55,
+      "energy_kwh": 3.8675,
+      "soc_pct": 45.44,
+      "charging_event": false
+    },
+    {
+      "dist_m": 150,
+      "grade": 1.3995,
+      "speed": 55,
+      "energy_kwh": 0.4151,
+      "soc_pct": 45.34,
+      "charging_event": false
+    },
+    {
+      "dist_m": 300,
+      "grade": 12.0544,
+      "speed": 55,
+      "energy_kwh": 3.8521,
+      "soc_pct": 44.36,
+      "charging_event": false
+    },
+    {
+      "dist_m": 300,
+      "grade": 1.104,
+      "speed": 55,
+      "energy_kwh": 0.7456,
+      "soc_pct": 44.17,
+      "charging_event": false
+    },
+    {
+      "dist_m": 150,
+      "grade": 8.2176,
+      "speed": 55,
+      "energy_kwh": 1.3861,
+      "soc_pct": 43.82,
+      "charging_event": false
+    },
+    {
+      "dist_m": 150,
+      "grade": 2.7989,
+      "speed": 55,
+      "energy_kwh": 0.6151,
+      "soc_pct": 43.66,
+      "charging_event": false
+    },
+    {
+      "dist_m": 300,
+      "grade": 7.4587,
+      "speed": 55,
+      "energy_kwh": 2.5571,
+      "soc_pct": 43.01,
+      "charging_event": false
+    },
+    {
+      "dist_m": 150,
+      "grade": 1.7493,
+      "speed": 55,
+      "energy_kwh": 0.4651,
+      "soc_pct": 42.89,
+      "charging_event": false
+    },
+    {
+      "dist_m": 300,
+      "grade": 14,
+      "speed": 55,
+      "energy_kwh": 4.3944,
+      "soc_pct": 41.78,
+      "charging_event": false
+    },
+    {
+      "dist_m": 64.36,
+      "grade": 0,
+      "speed": 55,
+      "energy_kwh": 0.0922,
+      "soc_pct": 41.75,
+      "charging_event": false
+    }
+  ],
+  "kpis": {
+    "total_kwh": 229.48602238180212,
+    "wh_per_mi": 3516.5146698787803,
+    "regen_kwh": 3.204677039395958,
+    "total_time_s": 4271.531528600248
+  },
+  "disclaimer": "Planning and feasibility tool only — not real-time dispatch guidance. Results depend on OEM assumptions, cached elevation, and posted speed limits. Verify against manufacturer claims before stakeholder decisions.",
+  "assumptions": [
+    {
+      "field": "C_rr",
+      "value": 0.0065,
+      "source": "oem_default",
+      "oem_default": 0.0065
+    },
+    {
+      "field": "drag_coefficient",
+      "value": 0.65,
+      "source": "oem_default",
+      "oem_default": 0.65
+    },
+    {
+      "field": "usable_kwh",
+      "value": 394,
+      "source": "oem_default",
+      "oem_default": 394
+    },
+    {
+      "field": "aux_kw_base",
+      "value": 10,
+      "source": "oem_default",
+      "oem_default": 10
+    },
+    {
+      "field": "regen_efficiency",
+      "value": 0.7,
+      "source": "oem_default",
+      "oem_default": 0.7
+    }
+  ],
+  "truck_slug": "ecascadia_438",
+  "metadata": {
+    "elevation_source": "Open-Elevation",
+    "segment_count": 65,
+    "weather_preset": "ideal",
+    "port_drayage_enabled": false,
+    "payload_lbs": 45000
+  }
+}

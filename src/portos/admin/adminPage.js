@@ -16,6 +16,8 @@ import {
   assetFromText,
   assetsFromRows,
   assetsToCsv,
+  catalogFill,
+  choiceValues,
   classFields,
   classesByGroup,
   describeChange,
@@ -24,6 +26,7 @@ import {
   nextId,
   parseCsv,
   readXlsx,
+  snapChoice,
 } from './adminModel.js';
 
 const API = '/api/portos/admin';
@@ -255,7 +258,26 @@ function refOptions(field, value) {
     .join('')}`;
 }
 
-function fieldInput(field, asset, isNew) {
+const NEW_CHOICE = '__new__';
+const NEW_SUFFIX = '__new';
+
+/** min/max/step attributes for a number box, from the field's limits. */
+function numberAttrs(field) {
+  const step = field.step ?? (field.type === 'number' ? 'any' : 1);
+  return [
+    field.min !== undefined ? `min="${field.min}"` : '',
+    field.max !== undefined ? `max="${field.max}"` : '',
+    `step="${step}"`,
+    `inputmode="${field.type === 'number' ? 'decimal' : 'numeric'}"`,
+  ].join(' ');
+}
+
+/**
+ * The control for one field. Every value a formula reads is picked from a
+ * list or typed into a number or code box the browser checks; only names
+ * and notes are free text.
+ */
+function fieldInput(field, asset) {
   const value = asset?.[field.key];
   const id = `f-${field.key}`;
   const name = `name="${esc(field.key)}" id="${id}"`;
@@ -271,6 +293,26 @@ function fieldInput(field, asset, isNew) {
             `<option value="${esc(o.value)}" ${o.value === value ? 'selected' : ''}>${esc(o.label)}</option>`,
         )
         .join('')}</select>`;
+    case 'multi': {
+      const picked = Array.isArray(value) ? value : [];
+      return `<fieldset class="checks" id="${id}">${(field.options || [])
+        .map(
+          (o) =>
+            `<label><input type="checkbox" name="${esc(field.key)}" value="${esc(o.value)}" ${picked.includes(o.value) ? 'checked' : ''} /> ${esc(o.label)}</label>`,
+        )
+        .join('')}</fieldset>`;
+    }
+    case 'choice': {
+      const known = choiceValues(assets(), field.key);
+      const list = value && !known.includes(value) ? [value, ...known] : known;
+      return `<select ${name} data-choice="${esc(field.key)}"><option value=""></option>${list
+        .map(
+          (v) =>
+            `<option value="${esc(v)}" ${v === value ? 'selected' : ''}>${esc(v)}</option>`,
+        )
+        .join('')}<option value="${NEW_CHOICE}">Add a new one…</option></select>
+        <input type="text" class="choice-new" name="${esc(field.key)}${NEW_SUFFIX}" aria-label="New ${esc(field.label.toLowerCase())}" placeholder="Type it once; it joins the list" hidden />`;
+    }
     case 'ref':
       return `<select ${name}>${refOptions(field, value)}</select>`;
     case 'spec': {
@@ -282,18 +324,31 @@ function fieldInput(field, asset, isNew) {
         )
         .join('')}</select>`;
     }
+    case 'number':
+    case 'integer':
+    case 'year':
+      return `<input type="number" ${name} ${numberAttrs(field)} value="${esc(formatValue(field, value))}" />`;
+    case 'code': {
+      const locked = field.key === 'id' ? 'readonly' : '';
+      const digits = /^\^\[0-9\]/.test(field.pattern)
+        ? 'inputmode="numeric"'
+        : '';
+      // The id is generated and read-only; other codes get the browser's
+      // own pattern check as well as the save-time check.
+      const pattern = locked
+        ? ''
+        : `pattern="${esc(field.pattern.replace(/^\^|\$$/g, ''))}"`;
+      return `<input type="text" ${name} ${pattern} placeholder="${esc(field.example || '')}" ${digits} ${locked} value="${esc(formatValue(field, value))}" />`;
+    }
     case 'area':
     case 'line':
       return `<textarea ${name} placeholder="lat, lon; lat, lon; ...">${esc(formatValue(field, value))}</textarea>`;
-    default: {
-      const mode = ['number', 'year'].includes(field.type)
-        ? 'inputmode="decimal"'
-        : '';
-      const placeholder =
-        field.type === 'point' ? 'placeholder="34.1490, -119.2080"' : '';
-      const locked = field.key === 'id' && !isNew ? 'readonly' : '';
-      return `<input type="text" ${name} ${mode} ${placeholder} ${locked} value="${esc(formatValue(field, value))}" />`;
-    }
+    case 'point':
+      return `<input type="text" ${name} inputmode="decimal" placeholder="34.1490, -119.2080" value="${esc(formatValue(field, value))}" />`;
+    default:
+      return field.multiline
+        ? `<textarea ${name}>${esc(formatValue(field, value))}</textarea>`
+        : `<input type="text" ${name} value="${esc(formatValue(field, value))}" />`;
   }
 }
 
@@ -312,12 +367,12 @@ function editorView() {
   return `<aside class="card editor" aria-label="Asset editor">
     <h2>${isNew ? `New ${esc(ASSET_CLASSES[cls].label.toLowerCase())}` : esc(asset.label || asset.id)}</h2>
     ${isNew ? '' : `<p class="meta">${esc(ASSET_CLASSES[cls].label)} · revision ${asset.rev} · last edit by ${esc(asset.updatedBy)}, ${esc(when(asset.updatedAt))}</p>`}
-    <form data-form="asset" novalidate>
+    <form data-form="asset" data-cls="${esc(cls)}" novalidate>
       ${fields
         .map(
           (f) => `<div class="field">
           <label for="f-${esc(f.key)}">${esc(f.label)}${f.unit ? ` (${esc(f.unit)})` : ''}${f.required ? ' <span class="req" aria-label="required">*</span>' : ''}</label>
-          ${fieldInput(f, asset, isNew)}
+          ${fieldInput(f, asset)}
           ${f.help ? `<div class="help">${esc(f.help)}</div>` : ''}
         </div>`,
         )
@@ -341,11 +396,14 @@ function historyList(entries, showAsset = false) {
     update: 'Edited',
     delete: 'Deleted',
     import: 'Imported',
+    migrate: 'Updated to the new form',
   };
   return `<ul class="history">${entries
     .map((e) => {
       const changes =
-        e.action === 'update' || (e.action === 'import' && e.before)
+        e.action === 'update' ||
+        e.action === 'migrate' ||
+        (e.action === 'import' && e.before)
           ? describeChange(e.before, e.after)
           : [];
       const diff = changes.length
@@ -460,8 +518,23 @@ async function openAsset(id) {
 
 function formValues(form) {
   const values = {};
-  for (const element of form.elements)
-    if (element.name) values[element.name] = element.value;
+  const ticked = {};
+  for (const element of form.elements) {
+    if (!element.name || element.name.endsWith(NEW_SUFFIX)) continue;
+    if (element.type === 'checkbox') {
+      ticked[element.name] ||= [];
+      if (element.checked) ticked[element.name].push(element.value);
+    } else values[element.name] = element.value;
+  }
+  for (const [key, list] of Object.entries(ticked))
+    values[key] = list.join(';');
+  // "Add a new one…": take the typed name, snapped to an existing spelling.
+  for (const [key, value] of Object.entries(values))
+    if (value === NEW_CHOICE)
+      values[key] = snapChoice(
+        form.elements[`${key}${NEW_SUFFIX}`]?.value,
+        choiceValues(assets(), key),
+      );
   return values;
 }
 
@@ -682,7 +755,36 @@ app.addEventListener('input', (event) => {
   }
 });
 
+/** Fill powertrain, make, model and rated power from the picked catalog model. */
+function applyCatalog(select) {
+  const form = select.form;
+  const cls = form?.dataset.cls || state.cls;
+  for (const [key, value] of Object.entries(catalogFill(cls, select.value))) {
+    const input = form.elements.namedItem(key);
+    if (!input) continue;
+    if (
+      input.tagName === 'SELECT' &&
+      ![...input.options].some((o) => o.value === String(value))
+    ) {
+      input.add(new Option(String(value), String(value)), input.options[1]);
+    }
+    input.value = String(value);
+  }
+}
+
 app.addEventListener('change', async (event) => {
+  if (event.target.name === 'catalogId') {
+    applyCatalog(event.target);
+    return;
+  }
+  if (event.target.dataset?.choice) {
+    const box = event.target.parentElement.querySelector('.choice-new');
+    if (box) {
+      box.hidden = event.target.value !== NEW_CHOICE;
+      if (!box.hidden) box.focus();
+    }
+    return;
+  }
   if (event.target.id === 'import-file' && event.target.files?.[0]) {
     planImport(event.target.files[0]);
   } else if (event.target.id === 'nav-select') {

@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import test from 'node:test';
-import { validateRegistry } from '../../src/portos/assetClasses.js';
+import {
+  migrateAsset,
+  validateRegistry,
+} from '../../src/portos/assetClasses.js';
 import { HUENEME_REGISTRY } from '../../src/portos/hueneme.js';
 import { adminSettings, createAdminHandler, emailAllowed } from './adminApi.js';
 import { openAdminStore } from './adminStore.js';
@@ -18,6 +21,7 @@ function memoryStore(now = () => 1_000) {
     dir: ':memory:',
     seed: HUENEME_REGISTRY,
     validate: validateRegistry,
+    migrate: migrateAsset,
     now,
   });
 }
@@ -345,4 +349,53 @@ test('without PORTOS_ADMIN_EMAILS only the staff domains get in', async () => {
       401,
       email,
     );
+});
+
+test('opening the store brings old free-text records up to the new form', async () => {
+  const { mkdtempSync, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const path = await import('node:path');
+  const dir = mkdtempSync(path.join(tmpdir(), 'portos-admin-'));
+  try {
+    // An older build saved free text (no migration then).
+    const old = openAdminStore({
+      dir,
+      seed: HUENEME_REGISTRY,
+      validate: () => [],
+      now: () => 1_000,
+    });
+    old.saveAsset({
+      by: 'Dana',
+      asset: {
+        id: 'loco-old',
+        class: 'locomotive',
+        powertrain: 'diesel',
+        specId: Object.keys(HUENEME_REGISTRY.specs)[0],
+        railroad: 'Ventura County Railroad (Genesee & Wyoming)',
+        annualHours: '1200',
+      },
+    });
+    const store = openAdminStore({
+      dir,
+      seed: HUENEME_REGISTRY,
+      validate: validateRegistry,
+      migrate: migrateAsset,
+      now: () => 2_000,
+    });
+    const loco = store.assets().find((a) => a.id === 'loco-old');
+    assert.equal(loco.railroad, 'vcrr');
+    assert.equal(loco.annualHours, 1200);
+    assert.equal(loco.updatedBy, 'form update');
+    const [last] = store.history({ assetId: 'loco-old', limit: 1 });
+    assert.equal(last.action, 'migrate');
+    // An API caller using an old spelling is understood too.
+    const saved = store.saveAsset({
+      by: 'Dana',
+      asset: { ...loco, railroad: 'UP' },
+      rev: loco.rev,
+    });
+    assert.equal(saved.railroad, 'up');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
