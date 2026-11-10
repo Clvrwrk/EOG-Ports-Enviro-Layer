@@ -1,0 +1,1 @@
+- Fix typed AI chat failing with "Could not connect": OpenAI Chat Completions rejected the resolve_area tool schema because its candidateId pattern uses Unicode property escapes. Typed chat now leaves such patterns out; voice and the app's own check are unchanged.
