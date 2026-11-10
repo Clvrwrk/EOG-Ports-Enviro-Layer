@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { createVesselRegistry } from '../../emissions/vesselRegistry.js';
 import { loadVesselInventory } from './load.js';
 import {
   cargoClassFromType,
+  emissionsProfile,
+  emissionsProfiles,
   inventorySummary,
   mergeCallHistory,
   normalizeInventory,
@@ -129,4 +132,82 @@ test('the loader prefers the private file and survives missing files', async () 
     },
   });
   assert.deepEqual(empty.vessels, []);
+});
+
+test('engines and shore power feed the EPA emissions method', () => {
+  const vessel = normalizeVessel({
+    name: 'reefer one',
+    imo: '9000001',
+    mmsi: '111000001',
+    cargoClass: 'reefer',
+    yearBuilt: 2007,
+    draftM: 10.1,
+    engines: {
+      main: {
+        make: 'MAN-B&W',
+        model: '7S60MC-C',
+        kw: 15820,
+        engineType: 'SSD',
+        source: 'registry page',
+      },
+      epa: {
+        shipType: 'Container Ship',
+        subtype: '3,000 TEU',
+        basis: 'Table 3.4',
+      },
+      auxKw: {
+        transit: 1230,
+        maneuvering: 1800,
+        hotelling: 700,
+        anchorage: 1230,
+      },
+      boilerKw: {
+        transit: 0,
+        maneuvering: 350,
+        hotelling: 350,
+        anchorage: 350,
+      },
+      loadsSource: 'Appendix E',
+    },
+    shorePower: { capable: true, source: 'operator release' },
+    estimated: ['engines.auxKw', 'engines.boilerKw'],
+    source: 'test',
+  });
+  assert.deepEqual(validateInventory({ vessels: [vessel] }), []);
+  const profile = emissionsProfile(vessel);
+  assert.equal(profile.propulsion.installedKw, 15820);
+  assert.equal(profile.auxKw.hotelling, 700);
+  assert.equal(profile.shorePowerCapable, true);
+  assert.ok(profile.estimated.includes('engines.auxKw'));
+  // The registry in src/emissions accepts the profile as a row.
+  const registry = createVesselRegistry([profile]);
+  assert.equal(registry.lookup({ imo: '9000001' }).subtype, '3,000 TEU');
+  // A ship without engine data has no profile, and claims need a source.
+  assert.equal(emissionsProfile(normalizeVessel(SAMPLE.vessels[1])), null);
+  const unsourced = normalizeVessel({
+    name: 'X',
+    imo: '9000009',
+    source: 's',
+    shorePower: true,
+  });
+  assert.ok(
+    validateInventory({ vessels: [unsourced] })[0].includes('shore power'),
+  );
+});
+
+test('every published ship with engine data makes a valid emissions row', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const raw = JSON.parse(
+    await readFile(
+      new URL(
+        '../../../public/data/vessels/port-of-hueneme.json',
+        import.meta.url,
+      ),
+    ),
+  );
+  const inventory = normalizeInventory(raw);
+  assert.deepEqual(validateInventory(inventory), []);
+  const rows = emissionsProfiles(inventory);
+  assert.ok(rows.length > 200);
+  assert.ok(createVesselRegistry(rows).size > 200);
 });
