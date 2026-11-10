@@ -164,7 +164,12 @@ export function createTextChatHandler({
       }
       const prepared = prepare(input);
       if (!prepared) return reply(400, FAILURE);
-      if (prepared.errorStatus) return reply(prepared.errorStatus, FAILURE);
+      if (prepared.errorStatus)
+        return reply(
+          prepared.errorStatus,
+          prepared.error || FAILURE,
+          prepared.code,
+        );
       const { endpoint, body, headers } = prepared;
       lifetime.signal.throwIfAborted();
       const acquisition = Promise.resolve(

@@ -15,6 +15,8 @@ import {
 import { CHARGING_STRATEGIES } from '../fleetSim.js';
 import { FACTORS } from '../hueneme.js';
 import { rollup } from '../rollups.js';
+import { DELIVERED_PROFILES } from '../delivered.js';
+import { mountInterview } from '../interview/interviewPanel.js';
 import { runScenario } from '../scenario.js';
 import {
   CALL_TYPES,
@@ -114,6 +116,7 @@ app.innerHTML = `
       <button type="button" id="saveAs">Save as new</button>
       <button type="button" id="baseline">Set as baseline</button>
       <button type="button" id="remove">Delete</button>
+      <button type="button" id="interview" class="primary">Build by interview</button>
     </div>
     <div class="bar-row">
       <a class="button primary" id="globe" href="${TWIN_PATH}">Run on the 3D port</a>
@@ -161,8 +164,22 @@ app.innerHTML = `
         <label for="tariff">Rate</label>
         <select id="tariff"></select>
         <label class="inline"><input type="checkbox" id="deferred" /> Bill TOU-EV demand charges (if the CPUC turns them on)</label>
+        <div class="row2">
+          <div><label for="adjEnergy" title="Percent change to every energy rate, e.g. a rate case or a new tariff">Energy rate change (%)</label><input type="number" id="adjEnergy" min="-90" max="300" step="1" /></div>
+          <div><label for="adjDemand" title="Percent change to every demand charge">Demand charge change (%)</label><input type="number" id="adjDemand" min="-90" max="300" step="1" /></div>
+        </div>
         <label for="baseLoad">Buildings and other load, flat (kW)</label>
         <input type="number" id="baseLoad" min="0" max="100000" step="10" />
+      </fieldset>
+      <fieldset>
+        <legend>Delivered energy</legend>
+        <p class="hint">Power from outside the utility meter: a PPA, microgrid, solar or fuel cell.</p>
+        <div class="row2">
+          <div><label for="delShare">Share of port load (%)</label><input type="number" id="delShare" min="0" max="100" step="1" /></div>
+          <div><label for="delPrice">Price ($/kWh)</label><input type="number" id="delPrice" min="0" max="2" step="0.01" /></div>
+        </div>
+        <label for="delProfile">When it arrives</label>
+        <select id="delProfile"></select>
       </fieldset>
       <fieldset>
         <legend>Shore power</legend>
@@ -282,6 +299,8 @@ for (const [key, rule] of Object.entries(CHARGING_STRATEGIES))
   $('strategy').add(new Option(rule.label, key));
 for (const tariff of Object.values(TARIFFS))
   $('tariff').add(new Option(tariff.name, tariff.id));
+for (const [key, label] of Object.entries(DELIVERED_PROFILES))
+  $('delProfile').add(new Option(label, key));
 $('staxBerths').innerHTML = STAX.berths
   .map(
     (id) =>
@@ -372,6 +391,11 @@ function syncForm() {
   $('deferred').checked = draft.includeDeferredDemand;
   $('deferred').disabled = TARIFFS[draft.tariffId].demand.billed;
   $('baseLoad').value = String(draft.baseLoadKw);
+  $('adjEnergy').value = String(draft.tariffAdjust?.energyPct ?? 0);
+  $('adjDemand').value = String(draft.tariffAdjust?.demandPct ?? 0);
+  $('delShare').value = String(draft.delivered?.sharePct ?? 0);
+  $('delPrice').value = String(draft.delivered?.pricePerKwh ?? 0);
+  $('delProfile').value = draft.delivered?.profile ?? 'share';
   $('shore').checked = draft.shorePower;
   for (const box of $('shoreTypes').querySelectorAll('input')) {
     box.checked = draft.shorePowerTypes.includes(box.dataset.shoreType);
@@ -526,6 +550,13 @@ function renderKpis() {
       moneyShort(t.electricityCost),
       `${moneyShort(t.demandCost)} of it demand charges`,
     ),
+    t.deliveredKwh
+      ? kpi(
+          'Delivered energy',
+          `${num(t.deliveredKwh / 1000)} MWh`,
+          `${num((t.deliveredKwh / t.siteKwh) * 100)}% of load${t.curtailedKwh > 1 ? ` (target ${num(result.delivered.sharePct)}%)` : ''}, ${moneyShort(t.deliveredCost)}/yr`,
+        )
+      : null,
     kpi(
       'Meter peak',
       kw(t.peakKw),
@@ -562,7 +593,9 @@ function renderKpis() {
             ? 'fleet too small or flat batteries'
             : 'every crew fully staffed',
         ),
-  ].join('');
+  ]
+    .filter(Boolean)
+    .join('');
 }
 
 function peakWeek() {
@@ -595,6 +628,12 @@ function renderLoad() {
       values: result.siteKw.subarray(start, end),
     },
   ];
+  if (result.delivered)
+    series.push({
+      label: 'After delivered energy',
+      color: 'var(--series-3)',
+      values: result.gridKw.subarray(start, end),
+    });
   if (result.battery)
     series.push({
       label: 'At the meter, with battery',
@@ -670,11 +709,20 @@ function renderRollup() {
 
 function renderNotes() {
   const tariff = result.tariff;
+  const delivered = result.delivered;
   const registry = activeRegistry();
   const notes = [
     registry
       ? `Assets come from the admin registry (${registry.assets.length} assets), not the built-in seed.`
       : 'Assets come from the built-in Hueneme seed registry.',
+    ...(delivered
+      ? [
+          `Delivered energy covers ${num(delivered.sharePct)}% of yearly load (${DELIVERED_PROFILES[delivered.profile].toLowerCase()}) at $${delivered.pricePerKwh}/kWh. It never exports: ${num(delivered.curtailedKwh / 1000)} MWh a year would arrive when the port does not need it and is curtailed.`,
+        ]
+      : []),
+    ...(result.scenario.tariffAdjust
+      ? [`Rate adjusted from the published seed: ${result.tariff.name}.`]
+      : []),
     `${result.totals.calls} vessel calls are synthesized from the 2021-23 workbook averages by vessel type (no real schedule is shown). Recorded calls from the live event log will replace them.`,
     `Rate: ${tariff.name}. ${tariff.status}. Source: ${tariff.source}.`,
     'Winter super-off-peak is modeled as 8 a.m. to 4 p.m.; the start hour still needs confirming in the SCE tariff book.',
@@ -817,6 +865,18 @@ $('controls').addEventListener('change', (event) => {
     draft.includeDeferredDemand = $('deferred').checked;
   else if (id === 'baseLoad') draft.baseLoadKw = numberOf('baseLoad');
   else if (id === 'shore') draft.shorePower = $('shore').checked;
+  else if (id === 'adjEnergy' || id === 'adjDemand')
+    draft.tariffAdjust = {
+      ...draft.tariffAdjust,
+      energyPct: numberOf('adjEnergy'),
+      demandPct: numberOf('adjDemand'),
+    };
+  else if (id.startsWith('del'))
+    draft.delivered = {
+      sharePct: numberOf('delShare'),
+      pricePerKwh: numberOf('delPrice'),
+      profile: $('delProfile').value,
+    };
   else if (id === 'stax') draft.stax = $('stax').checked;
   else if (id === 'staxBarges') draft.staxBarges = numberOf('staxBarges', 2);
   else if (id.startsWith('bat')) draft.battery = readBattery();
@@ -958,6 +1018,17 @@ $('peakWeek').addEventListener('click', () => {
 });
 $('grain').addEventListener('change', () => result && renderRollup());
 
+mountInterview({
+  button: $('interview'),
+  current: () => draft,
+  apply(scenario) {
+    load(scenario);
+    say(
+      `Built "${draft.name}" from the interview. Save it, compare it, or run it on the 3D port.`,
+      'ok',
+    );
+  },
+});
 $('useAdmin').addEventListener('change', () => {
   registrySource.use = $('useAdmin').checked;
   say(

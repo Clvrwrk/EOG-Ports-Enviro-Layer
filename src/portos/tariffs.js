@@ -92,3 +92,57 @@ export function energyRate(tariff, season, period) {
   const table = tariff.energy[season];
   return table[period] ?? table.off;
 }
+
+const scaleBy = (pct) => 1 + (Number(pct) || 0) / 100;
+
+/**
+ * A tariff with its charges moved by a percentage: a rate case, a new rate
+ * schedule priced off the current one, or a "what if demand charges double".
+ * `energyPct`, `demandPct` and `customerPct` are percent changes (+10 = 10%
+ * higher). Returns the tariff itself when nothing changes.
+ */
+export function adjustTariff(tariff, adjust) {
+  if (!adjust) return tariff;
+  const energy = scaleBy(adjust.energyPct);
+  const demand = scaleBy(adjust.demandPct);
+  const customer = scaleBy(adjust.customerPct);
+  if (energy === 1 && demand === 1 && customer === 1) return tariff;
+  const scaleTable = (table) =>
+    Object.fromEntries(
+      Object.entries(table).map(([season, rates]) => [
+        season,
+        Object.fromEntries(
+          Object.entries(rates).map(([period, rate]) => [
+            period,
+            rate * energy,
+          ]),
+        ),
+      ]),
+    );
+  const scaleDemand = (block) =>
+    block && {
+      ...block,
+      ...(block.facilitiesPerKw != null
+        ? { facilitiesPerKw: block.facilitiesPerKw * demand }
+        : {}),
+      timeRelated: (block.timeRelated || []).map((window) => ({
+        ...window,
+        perKw: window.perKw * demand,
+      })),
+      ...(block.deferred ? { deferred: scaleDemand(block.deferred) } : {}),
+    };
+  const parts = [];
+  for (const [label, pct] of [
+    ['energy', adjust.energyPct],
+    ['demand', adjust.demandPct],
+    ['customer charge', adjust.customerPct],
+  ])
+    if (Number(pct)) parts.push(`${label} ${pct > 0 ? '+' : ''}${pct}%`);
+  return {
+    ...tariff,
+    name: `${tariff.name}, adjusted (${parts.join(', ')})`,
+    energy: scaleTable(tariff.energy),
+    customerChargePerMonth: tariff.customerChargePerMonth * customer,
+    demand: scaleDemand(tariff.demand),
+  };
+}

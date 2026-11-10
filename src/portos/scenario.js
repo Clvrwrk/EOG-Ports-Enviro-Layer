@@ -7,6 +7,7 @@
  */
 import { billByMonth, stepPeriods } from './billing.js';
 import { dispatchBattery } from './battery.js';
+import { deliveredSupply } from './delivered.js';
 import { capexPlan } from './capex.js';
 import {
   STAX,
@@ -29,7 +30,7 @@ import {
   shorePowerLoad,
   synthesizeCalls,
 } from './schedule.js';
-import { TARIFFS } from './tariffs.js';
+import { TARIFFS, adjustTariff } from './tariffs.js';
 import { STEPS_PER_HOUR, yearSteps } from './touCalendar.js';
 
 const DT = 1 / STEPS_PER_HOUR;
@@ -61,6 +62,12 @@ export const DEFAULT_SCENARIO = Object.freeze({
   // overlap (e.g. Class V forklifts for Ro-Ro high-and-heavy work). When true,
   // extra diesel units cover the gap and are reported as gapUnits.
   fillGapWithDiesel: true,
+  // Percent changes to the selected rate: { energyPct, demandPct,
+  // customerPct }. Null keeps the rate as published.
+  tariffAdjust: null,
+  // Energy from outside the utility meter (PPA, microgrid, solar):
+  // { sharePct, profile, pricePerKwh } (see delivered.js). Null for none.
+  delivered: null,
 });
 
 /** Electric/diesel counts for a spec in a fleet-plan year. */
@@ -115,8 +122,9 @@ function max(values) {
 export function runScenario(input = {}, context = {}) {
   const scenario = { ...DEFAULT_SCENARIO, ...input };
   const registry = context.registry ?? HUENEME_REGISTRY;
-  const tariff = TARIFFS[scenario.tariffId];
-  if (!tariff) throw new Error(`Unknown tariff: ${scenario.tariffId}`);
+  const published = TARIFFS[scenario.tariffId];
+  if (!published) throw new Error(`Unknown tariff: ${scenario.tariffId}`);
+  const tariff = adjustTariff(published, scenario.tariffAdjust);
   const calendar = yearSteps(scenario.year);
   const totalSteps = calendar.length;
   const { periods } = stepPeriods(tariff, calendar);
@@ -198,18 +206,30 @@ export function runScenario(input = {}, context = {}) {
     : null;
   if (shoreKw) for (let i = 0; i < totalSteps; i += 1) siteKw[i] += shoreKw[i];
 
+  // Delivered energy comes off the load before the battery sees it.
+  let delivered = null;
+  let gridKw = siteKw;
+  if (scenario.delivered?.sharePct > 0) {
+    delivered = {
+      ...scenario.delivered,
+      ...deliveredSupply(siteKw, calendar, scenario.delivered),
+    };
+    gridKw = new Float64Array(totalSteps);
+    for (let i = 0; i < totalSteps; i += 1)
+      gridKw[i] = siteKw[i] - delivered.kw[i];
+  }
   const atBerth = atBerthWithAndWithoutStax(calls, scenario);
 
   let battery = null;
-  let meterKw = siteKw;
+  let meterKw = gridKw;
   if (scenario.battery?.kwh > 0 && scenario.battery?.kw > 0) {
     const thresholdKw =
       scenario.battery.thresholdKw === 'auto' ||
       scenario.battery.thresholdKw == null
-        ? bestThreshold(siteKw, scenario.battery, periods)
+        ? bestThreshold(gridKw, scenario.battery, periods)
         : scenario.battery.thresholdKw;
     const dispatch = dispatchBattery(
-      siteKw,
+      gridKw,
       { ...scenario.battery, thresholdKw },
       periods,
     );
@@ -220,7 +240,7 @@ export function runScenario(input = {}, context = {}) {
   const billOptions = { includeDeferredDemand: scenario.includeDeferredDemand };
   const bills = billByMonth(meterKw, tariff, calendar, billOptions);
   const billsWithoutBattery = battery
-    ? billByMonth(siteKw, tariff, calendar, billOptions)
+    ? billByMonth(gridKw, tariff, calendar, billOptions)
     : bills;
   const totalOf = (rows, field) =>
     rows.reduce((acc, row) => acc + row[field], 0);
@@ -239,8 +259,10 @@ export function runScenario(input = {}, context = {}) {
     fleets,
     siteKw,
     shoreKw,
+    gridKw,
     meterKw,
     dieselGallons,
+    delivered,
     atBerth,
     battery,
     bills,
@@ -249,7 +271,12 @@ export function runScenario(input = {}, context = {}) {
       calls: calls.length,
       kwh: sum(meterKw) * DT,
       peakKw: max(meterKw),
-      peakKwWithoutBattery: max(siteKw),
+      peakKwWithoutBattery: max(gridKw),
+      siteKwh: sum(siteKw) * DT,
+      sitePeakKw: max(siteKw),
+      deliveredKwh: delivered ? delivered.kwh : 0,
+      deliveredCost: delivered ? delivered.cost : 0,
+      curtailedKwh: delivered ? delivered.curtailedKwh : 0,
       energyCost: totalOf(bills, 'energyCost'),
       demandCost: totalOf(bills, 'demandCost'),
       electricityCost: totalOf(bills, 'total'),
