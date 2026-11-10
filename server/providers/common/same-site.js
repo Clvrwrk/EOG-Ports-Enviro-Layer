@@ -1,4 +1,5 @@
 import { admitSameSiteRequest } from '../../../src/localRequestGate.mjs';
+import { forwardedProtocol, trustedProxyEnabled } from './trusted-proxy.js';
 
 /**
  * Cross-site request gate for cost-bearing and log endpoints. Feeds the
@@ -13,12 +14,20 @@ import { admitSameSiteRequest } from '../../../src/localRequestGate.mjs';
  * @returns {boolean} True when a 403 was sent.
  */
 export function admitSameSite(req, res) {
+  // GEV_TRUST_PROXY: one proxy the owner runs fronts the app, so its
+  // forwarding headers are expected and its X-Forwarded-Proto is the scheme
+  // the browser's Origin carries. Origin and Sec-Fetch-Site still apply.
+  const trusted = trustedProxyEnabled();
   const verdict = admitSameSiteRequest({
     hostHeader: req.headers?.host,
-    protocol: req.socket?.encrypted ? 'https:' : 'http:',
+    protocol: trusted
+      ? forwardedProtocol(req)
+      : req.socket?.encrypted
+        ? 'https:'
+        : 'http:',
     origin: req.headers?.origin,
     secFetchSite: req.headers?.['sec-fetch-site'],
-    proxyHeaders: req.headers || {},
+    proxyHeaders: trusted ? {} : req.headers || {},
   });
   if (verdict.ok) return false;
   res.statusCode = verdict.status;
@@ -40,20 +49,6 @@ export function sameSiteGated(handler) {
     if (admitSameSite(req, res)) return undefined;
     return handler(req, res, next);
   };
-}
-
-/**
- * Proxy header values arrive client-controlled; read one only when it is a
- * single scheme token, never a comma-separated chain.
- * @param {import('node:http').IncomingMessage} req
- * @returns {'http:'|'https:'}
- */
-function forwardedProtocol(req) {
-  if (req.socket?.encrypted) return 'https:';
-  const proto = String(req.headers?.['x-forwarded-proto'] || '')
-    .trim()
-    .toLowerCase();
-  return proto === 'https' ? 'https:' : 'http:';
 }
 
 /**

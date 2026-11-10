@@ -141,6 +141,7 @@ test('twin toggles keep the rest of a builder scenario', () => {
     charging: 'asap',
     battery: 'custom',
     shorePower: false,
+    rate: 'ev9',
   });
   const next = applyDecisions(built, { utrs: 'electric', shorePower: true });
   assert.equal(next.tariffId, 'SCE-TOU-EV-9');
@@ -153,6 +154,11 @@ test('twin toggles keep the rest of a builder scenario', () => {
     decisionsFromScenario(applyDecisions(next, { utrs: 'plan' })).utrs,
     'plan',
   );
+  // Switching the rate sheet changes the tariff and nothing else.
+  const rated = applyDecisions(next, { rate: 'ev9demand' });
+  assert.equal(rated.includeDeferredDemand, true);
+  assert.equal(rated.callScale, 1.2);
+  assert.equal(decisionsFromScenario(rated).rate, 'ev9demand');
   assert.deepEqual(
     decisionsFromScenario(scenarioFromDecisions(DEFAULT_DECISIONS)),
     DEFAULT_DECISIONS,
