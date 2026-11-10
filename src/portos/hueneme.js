@@ -417,6 +417,13 @@ export const HUENEME_REGISTRY = Object.freeze({
       tariffId: 'SCE-TOU-8-D',
       note: 'placeholder: one service for CHE charging until real meters are entered',
     },
+    {
+      id: 'meter-crane-power',
+      class: 'meter',
+      utility: 'SCE',
+      tariffId: 'SCE-TOU-8-D',
+      note: 'placeholder: the separate crane power service built for the South Terminal cranes; the real meter and rate go in the private overlay',
+    },
     { id: 'charger-utr-01', class: 'charger', meterId: 'meter-che', kw: 50 },
     { id: 'charger-utr-02', class: 'charger', meterId: 'meter-che', kw: 50 },
     ...['berth-1', 'berth-2', 'berth-3'].map((berthId, i) => ({
@@ -431,19 +438,20 @@ export const HUENEME_REGISTRY = Object.freeze({
     ...fleetAssets('forklift_class_v', 3, 0),
     // Four Liebherr mobile harbor cranes (Ports America). Press releases name
     // the 2013 LHM 420 and plug-in hybrids delivered in 2019 and 2022. Port
-    // staff confirmed all of them plug into the berth's utility-grade shore
-    // power, the same service the ships use: diesel only to drive between
-    // spots. Cranes 1-2 work berth 1, cranes 3-4 berth 2 (twin layout).
+    // staff confirmed all of them plug into utility-grade power at the
+    // berth, with diesel only to drive between spots. They bill on their own
+    // crane power service, not the ships' shore power meter (port staff,
+    // 2026-11-10). Cranes 1-2 work berth 1, cranes 3-4 berth 2 (twin layout).
     ...fleetAssets('harbor_crane', 0, 4, 'hybrid').map((crane, i) => ({
       ...crane,
       label: `Crane ${i + 1}`,
       make: 'Liebherr',
       homeId: i < 2 ? 'berth-1' : 'berth-2',
-      meterId: 'meter-che',
+      meterId: 'meter-crane-power',
       source:
-        'Port staff (2026-11-10): every crane plugs into the berth shore power service',
+        'Port staff (2026-11-10): every crane plugs in at the berth and bills on the crane power service',
       notes:
-        'Plugs into the berth shore power service shared with ships. In the public seed that service is the placeholder meter; the real meter link goes in the private overlay.',
+        'Plug-in at the berth, billed on the separate crane power service rather than the ship shore power meter. The public seed uses a placeholder meter; the real meter link goes in the private overlay.',
     })),
     ...fleetAssets('reach_stacker', 3, 0),
   ],
