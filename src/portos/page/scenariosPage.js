@@ -35,7 +35,10 @@ import {
   writeLibrary,
 } from '../scenarioStore.js';
 import { TARIFFS } from '../tariffs.js';
-import { fetchAdminRegistry, fleetFromRegistry } from '../admin/registrySource.js';
+import {
+  fetchAdminRegistry,
+  fleetFromRegistry,
+} from '../admin/registrySource.js';
 import { STEPS_PER_DAY } from '../touCalendar.js';
 
 const MAX_COMPARED = 4;
@@ -908,7 +911,10 @@ $('useAdmin').addEventListener('change', () => {
 $('fleetFromRegistry').addEventListener('click', () => {
   if (!registrySource.admin) return;
   draft = { ...draft, fleet: fleetFromRegistry(registrySource.admin) };
-  say('Equipment counts set from the active units in the admin registry.', 'ok');
+  say(
+    'Equipment counts set from the active units in the admin registry.',
+    'ok',
+  );
   run();
 });
 
@@ -917,7 +923,8 @@ run();
 fetchAdminRegistry().then((registry) => {
   if (!registry) return;
   registrySource.admin = registry;
-  $('registryNote').textContent = `${registry.assets.length} assets, signed in as ${registry.signedInAs}.`;
+  $('registryNote').textContent =
+    `${registry.assets.length} assets, signed in as ${registry.signedInAs}.`;
   $('registryRow').hidden = false;
   cache.clear();
   run();
