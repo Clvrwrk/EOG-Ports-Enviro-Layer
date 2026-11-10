@@ -17,6 +17,11 @@ import { STEPS_PER_DAY } from '../touCalendar.js';
 import { TWIN_COLORS } from './view.js';
 
 const STYLE_ID = 'port-twin-style';
+/** Where saved conduit routes live, by gridPlanStore's `where`. */
+const GRID_WHERE_TEXT = {
+  server: 'Routes are shared with everyone signed in.',
+  browser: 'Routes are kept in this browser only.',
+};
 /** Element the app's menu offers for the twin's controls. */
 export const TWIN_HOST_ID = 'poh-twin-host';
 
@@ -382,11 +387,7 @@ export function createTwinPanel(
     gridDiscard.disabled = !view.dirty;
     gridStatus.textContent =
       view.status ||
-      (view.dirty
-        ? 'Unsaved changes.'
-        : view.where === 'server'
-          ? 'Routes are shared with everyone signed in.'
-          : 'Routes are kept in this browser only.');
+      (view.dirty ? 'Unsaved changes.' : GRID_WHERE_TEXT[view.where]);
   }
   const driverText = el('p', { class: 'driver' });
   const driverNote = el('p', { class: 'sub' });
