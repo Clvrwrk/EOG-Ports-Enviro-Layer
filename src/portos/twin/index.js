@@ -14,7 +14,15 @@ import { demandDriver } from '../demandDriver.js';
 import { HUENEME_REGISTRY } from '../hueneme.js';
 import { allocateScenario, meterScenarioAt } from '../meters/allocate.js';
 import { loadMeterRegistry } from '../meters/load.js';
-import { buildNetwork, networkCard, networkFlows } from '../meters/network.js';
+import { gridPlanEdits, normalizeGridPlan } from '../meters/gridPlan.js';
+import { loadGridPlan, saveGridPlan } from '../meters/gridPlanStore.js';
+import {
+  buildNetwork,
+  edgeLabel,
+  networkCard,
+  networkFlows,
+} from '../meters/network.js';
+import { createRouteEditor } from '../meters/routeEditor.js';
 import {
   GRID_ENTITY_PREFIX,
   createNetworkView,
@@ -97,6 +105,8 @@ export function createPortTwin({
   requestRender = () => {},
   layout = TWIN_LAYOUT,
   loadMeters = loadMeterRegistry,
+  loadPlan = loadGridPlan,
+  savePlan = saveGridPlan,
   loadSiteMap = loadSite,
   loadAssets = loadAssetRegistry,
   overlayHost = null,
@@ -131,6 +141,10 @@ export function createPortTwin({
   let plugMap = null;
   let network = null;
   let gridView = null;
+  // Hand-drawn conduit routes: { plan, saved, rev, where, status }. Kept
+  // while the twin is off so unsaved drawing is not lost.
+  let grid = null;
+  let editor = null;
   let flows = null;
   let readings = new Map();
   let siteView = null;
@@ -395,7 +409,128 @@ export function createPortTwin({
     return item ? { kind: 'structure', item } : null;
   }
 
+  /** Tell the panel what the route editor is showing. */
+  function showGrid() {
+    if (!panel || !grid || !network || !meters) return;
+    const state = editor?.state() ?? {};
+    panel.showGrid({
+      editing: Boolean(editor?.active()),
+      lines: network.edges
+        .filter((edge) => !edge.fixed)
+        .map((edge) => [edge.id, edgeLabel(network, meters, edge)]),
+      edgeId: state.edgeId ?? null,
+      bend: state.bend ?? null,
+      drawn: Boolean(state.edgeId && grid.plan.routes[state.edgeId]),
+      placing: Boolean(state.placing),
+      sources: grid.plan.sources,
+      meters: meters.meters.map((m) => [m.id, m.label]),
+      fedFrom: grid.plan.fedFrom,
+      dirty: grid.plan !== grid.saved,
+      where: grid.where,
+      status: grid.status,
+    });
+  }
+
+  /** Redraw the network after the plan changed. */
+  function rebuildGrid() {
+    if (!meters || !grid) return;
+    gridView?.destroy();
+    network = buildNetwork(meters, layout, plugMap, grid.plan);
+    gridView = createNetworkView(dataSource, network, plugMap);
+    gridView.setLinesVisible(layers.grid);
+    gridView.setPlugsVisible(layers.plugs);
+    flows = null;
+    energize();
+    editor?.refresh(network, grid.plan);
+    showGrid();
+    requestRender('port-twin-grid');
+  }
+
+  function editPlan(next) {
+    if (!grid || next === grid.plan) return;
+    grid.plan = next;
+    grid.status = '';
+    rebuildGrid();
+  }
+
+  /** A button or dropdown in the panel's conduit routes section. */
+  function onGrid(action, value) {
+    if (!grid || !editor || !active) return;
+    const edits = gridPlanEdits;
+    const edgeId = editor.state().edgeId;
+    if (action === 'edit') {
+      if (value) {
+        if (!layers.grid) {
+          setLayer('grid', true);
+          panel.setLayer('grid', true);
+        }
+        selected = null;
+        panel.showCard(null);
+        editor.start();
+      } else editor.stop();
+      return showGrid();
+    }
+    if (action === 'line') return editor.select(value || null);
+    if (action === 'removeBend') return editor.removeBend();
+    if (action === 'resetRoute')
+      return edgeId && editPlan(edits.resetRoute(grid.plan, edgeId));
+    if (action === 'place') return editor.setPlacing(value);
+    if (action === 'size')
+      return editPlan(edits.sizeSource(grid.plan, value.id, value.kva));
+    if (action === 'removeSource')
+      return editPlan(edits.removeSource(grid.plan, value));
+    if (action === 'feed')
+      return editPlan(
+        edits.feedMeter(grid.plan, value.meterId, value.sourceId),
+      );
+    if (action === 'save') {
+      const mine = grid;
+      const sent = grid.plan;
+      grid.status = 'Saving…';
+      showGrid();
+      return savePlan({ plan: sent, rev: grid.rev, where: grid.where }).then(
+        (answer) => {
+          if (grid !== mine) return;
+          if (answer.ok) {
+            grid.saved = sent;
+            grid.rev = answer.rev;
+            grid.status =
+              answer.where === 'server'
+                ? 'Saved. Everyone signed in now sees these routes.'
+                : 'Saved in this browser only.';
+          } else
+            grid.status = [answer.error, ...(answer.problems ?? [])].join(' ');
+          showGrid();
+        },
+      );
+    }
+    if (action === 'discard') return fetchPlan(true);
+  }
+
+  /** Load the saved plan; `force` drops unsaved drawing. */
+  function fetchPlan(force = false) {
+    if (grid && !force && grid.plan !== grid.saved)
+      return Promise.resolve(grid);
+    const mine = session;
+    return Promise.resolve(loadPlan()).then((loaded) => {
+      if (session !== mine || !meters) return grid;
+      const plan = normalizeGridPlan(loaded?.plan, {
+        meterIds: meters.meters.map((m) => m.id),
+      }).plan;
+      grid = {
+        plan,
+        saved: plan,
+        rev: loaded?.rev ?? 0,
+        where: loaded?.where ?? 'browser',
+        status: '',
+      };
+      if (force) rebuildGrid();
+      return grid;
+    });
+  }
+
   function onClick(movement) {
+    if (editor?.active()) return; // the route editor owns the map for now
     const picked = viewer.scene.pick(movement.position);
     const target = identify(picked?.id?.id);
     if (!target) return;
@@ -482,7 +617,7 @@ export function createPortTwin({
         meterView = createMeterView(dataSource, registry);
         meterView.setVisible(layers.meters);
         plugMap = plugLayout(registry);
-        network = buildNetwork(registry, layout, plugMap);
+        network = buildNetwork(registry, layout, plugMap, grid?.plan);
         gridView = createNetworkView(dataSource, network, plugMap);
         gridView.setLinesVisible(layers.grid);
         gridView.setPlugsVisible(layers.plugs);
@@ -490,6 +625,18 @@ export function createPortTwin({
         publishNames();
         allocate();
         render('port-twin-meters');
+        // Routes port staff drew by hand replace the automatic ones.
+        fetchPlan().then(() => {
+          if (!stillMine() || !grid) return;
+          editor = createRouteEditor({
+            viewer,
+            dataSource,
+            onPlan: editPlan,
+            onState: showGrid,
+            requestRender,
+          });
+          rebuildGrid();
+        });
         // Port assets: the public seed plus any private overlay, whose meter
         // links are checked against the meters just loaded.
         return loadAssets({ meterIds: registry.meters.map((m) => m.id) });
@@ -527,6 +674,8 @@ export function createPortTwin({
     raf = null;
     handler?.destroy();
     handler = null;
+    editor?.stop();
+    editor = null;
     evSection?.destroy();
     evSection = null;
     usage?.destroy();
@@ -577,6 +726,7 @@ export function createPortTwin({
           },
           onOpen: activate,
           onLayer: setLayer,
+          onGrid,
           onDecision(patch) {
             scenario = applyDecisions(scenario, patch);
             activeId = EDITED_ID;
@@ -649,6 +799,7 @@ export function createPortTwin({
     getMeters: () => meters,
     getAllocation: () => allocation,
     getNetwork: () => network,
+    getGridPlan: () => grid?.plan ?? null,
     getDriver: () => driver,
   };
 }

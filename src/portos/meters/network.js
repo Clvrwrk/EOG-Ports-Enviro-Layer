@@ -4,14 +4,19 @@
  * from the meters that feed something the twin shows: shore power vaults at
  * the berths, crane power outlets, equipment chargers and reefer racks.
  *
- * There is no as-built conduit drawing in the app, so the routes are an
- * approximation: one east-west backbone at the middle latitude of the
- * meters, with straight north-south drops off it and right-angle branch
+ * There is no as-built conduit drawing in the app, so the automatic routes
+ * are an approximation: one east-west backbone at the middle latitude of
+ * the meters, with straight north-south drops off it and right-angle branch
  * runs. It shows what feeds what and how much is flowing, not where to dig.
+ *
+ * Staff correct it with a grid plan (gridPlan.js): incoming transformers
+ * placed on the map, which transformer feeds which meter, and the bends of
+ * any line. A meter given a transformer leaves the automatic backbone.
  *
  * Pure: no Cesium, no DOM.
  */
 import { berthPoint, offsetToLonLat, rowSlot } from '../twin/layout.js';
+import { sourceLabel } from './gridPlan.js';
 import { serviceKw } from './registry.js';
 
 const latLon = (layout, offset) => {
@@ -30,48 +35,86 @@ function median(values) {
  * @param {object} registry meter registry
  * @param {object} layout twin layout (berths, cranes, chargers)
  * @param {{ gangs: object[] }} [plugMap] from plugLayout
+ * @param {object} [plan] grid plan (normalizeGridPlan) with staff's corrections
  * @returns {{ nodes: object[], edges: object[], approximate: true }}
  */
-export function buildNetwork(registry, layout, plugMap = { gangs: [] }) {
+export function buildNetwork(
+  registry,
+  layout,
+  plugMap = { gangs: [] },
+  plan = null,
+) {
   const meters = registry.meters;
   const nodes = [];
   const edges = [];
   if (!meters.length) return { nodes, edges, approximate: true };
-  const backbone = median(meters.map((m) => m.at[0]));
-  const lons = meters.map((m) => m.at[1]);
-  const lats = meters.map((m) => m.at[0]);
-  const feedAt = registry.feed?.at ?? [
-    Math.max(...lats) + 0.0005,
-    Math.max(...lons) + 0.0005,
-  ];
+  const sources = new Map((plan?.sources ?? []).map((s) => [s.id, s]));
+  const sourceOf = (meter) => sources.get(plan?.fedFrom?.[meter.id]) ?? null;
+  const onBackbone = meters.filter((m) => !sourceOf(m));
+  const backbone = median(
+    (onBackbone.length ? onBackbone : meters).map((m) => m.at[0]),
+  );
+  const lons = onBackbone.map((m) => m.at[1]);
+  const feedAt = plan?.feedAt ??
+    registry.feed?.at ?? [
+      Math.max(...meters.map((m) => m.at[0])) + 0.0005,
+      Math.max(...meters.map((m) => m.at[1])) + 0.0005,
+    ];
   nodes.push({
     id: 'feed',
     kind: 'feed',
     label: registry.feed?.label ?? 'Utility feed (approximate)',
     at: feedAt,
   });
+  for (const source of sources.values()) {
+    const fed = meters.filter((m) => sourceOf(m) === source);
+    nodes.push({
+      id: `source:${source.id}`,
+      kind: 'source',
+      label: sourceLabel(source),
+      at: source.at,
+      sourceId: source.id,
+      kva: source.kva,
+    });
+    edges.push({
+      id: `feeder:source:${source.id}`,
+      kind: 'feeder',
+      from: 'feed',
+      to: `source:${source.id}`,
+      sourceId: source.id,
+      capacityKw: source.kva,
+      path: elbow(feedAt, source.at),
+      meterIds: fed.map((m) => m.id),
+    });
+  }
   const entry = [backbone, feedAt[1]];
-  edges.push({
-    id: 'feeder:riser',
-    kind: 'feeder',
-    from: 'feed',
-    path: [feedAt, entry],
-    meterIds: meters.map((m) => m.id),
-  });
+  if (onBackbone.length)
+    edges.push({
+      id: 'feeder:riser',
+      kind: 'feeder',
+      from: 'feed',
+      path: [feedAt, entry],
+      meterIds: onBackbone.map((m) => m.id),
+    });
   // Backbone pieces between neighbouring taps, each carrying every meter
   // on its far side from where the feed comes in.
-  const stops = [...new Set([...lons, entry[1]])].sort((a, b) => a - b);
+  const stops = onBackbone.length
+    ? [...new Set([...lons, entry[1]])].sort((a, b) => a - b)
+    : [];
   for (let i = 0; i + 1 < stops.length; i += 1) {
     const west = stops[i];
     const east = stops[i + 1];
     const outward = east <= entry[1];
-    const served = meters.filter((m) =>
+    const served = onBackbone.filter((m) =>
       outward ? m.at[1] <= west : m.at[1] >= east,
     );
     if (!served.length) continue;
     edges.push({
       id: `feeder:${i}`,
       kind: 'feeder',
+      // Pieces of the automatic backbone come and go as meters are given
+      // transformers, so they are not drawn by hand.
+      fixed: true,
       path: outward
         ? [
             [backbone, east],
@@ -116,7 +159,12 @@ export function buildNetwork(registry, layout, plugMap = { gangs: [] }) {
       meterId: meter.id,
       endUse: meter.endUse,
       capacityKw: serviceKw(meter),
-      path: [[backbone, meter.at[1]], meter.at],
+      ...(sourceOf(meter)
+        ? {
+            from: `source:${sourceOf(meter).id}`,
+            path: elbow(sourceOf(meter).at, meter.at),
+          }
+        : { path: [[backbone, meter.at[1]], meter.at] }),
     });
     if (meter.carries.includes('shore_power'))
       for (const berthId of Object.keys(layout.berths))
@@ -161,7 +209,32 @@ export function buildNetwork(registry, layout, plugMap = { gangs: [] }) {
           gang.at,
         );
   }
+  // Lines staff drew keep their two ends and take the drawn bends between.
+  for (const edge of edges) {
+    const bends = edge.fixed ? null : plan?.routes?.[edge.id];
+    if (!bends) continue;
+    edge.path = [edge.path[0], ...bends, edge.path.at(-1)];
+    edge.drawn = true;
+  }
   return { nodes, edges, approximate: true };
+}
+
+/** What a line is called in a list: where it runs from and to. */
+export function edgeLabel(network, registry, edge) {
+  const meter = registry.meters.find((m) => m.id === edge.meterId);
+  if (edge.kind === 'service')
+    return `${meter?.label ?? edge.meterId}: service drop`;
+  if (edge.kind === 'branch') {
+    const end = network.nodes.find((n) => n.id === edge.to);
+    return `${meter?.label ?? edge.meterId}: to ${end?.label ?? edge.key}`;
+  }
+  if (edge.sourceId) {
+    const node = network.nodes.find((n) => n.id === edge.to);
+    return `Utility feed to ${node?.label ?? edge.sourceId}`;
+  }
+  return edge.id === 'feeder:riser'
+    ? 'Utility feed to the feeder backbone'
+    : 'Feeder backbone';
 }
 
 /**
@@ -188,9 +261,11 @@ export function networkFlows(
     }
   for (const edge of network.edges) {
     if (edge.kind === 'feeder') {
+      const kw = edge.meterIds.reduce((acc, id) => acc + kwOf(id), 0);
       flows.set(edge.id, {
-        kw: edge.meterIds.reduce((acc, id) => acc + kwOf(id), 0),
-        over: false,
+        kw,
+        // kVA taken as kW: close enough to flag an undersized transformer.
+        over: edge.capacityKw != null && kw > edge.capacityKw,
       });
     } else if (edge.kind === 'service') {
       const kw = kwOf(edge.meterId);
@@ -294,10 +369,16 @@ export function networkCard(network, flows, registry, target) {
       'Length',
       `about ${Math.round(pathLength(edge.path)).toLocaleString('en-US')} m`,
     ]);
-    rows.push(['Route', 'Approximate: no as-built conduit drawing yet']);
+    rows.push([
+      'Route',
+      edge.drawn
+        ? 'Drawn by port staff'
+        : 'Approximate: not drawn by staff yet',
+    ]);
     return {
-      title:
-        edge.kind === 'feeder'
+      title: edge.sourceId
+        ? 'Feeder to an incoming transformer'
+        : edge.kind === 'feeder'
           ? 'Feeder backbone'
           : edge.kind === 'service'
             ? 'Service drop'
@@ -311,11 +392,22 @@ export function networkCard(network, flows, registry, target) {
   const edge = network.edges.find((e) => e.to === node.id);
   const rows = [];
   if (node.kind === 'feed') {
-    const riser = flows?.get('feeder:riser');
-    rows.push(['Port load now', kwText(riser?.kw ?? 0)]);
+    const kw = network.edges
+      .filter((e) => e.from === 'feed')
+      .reduce((acc, e) => acc + (flows?.get(e.id)?.kw ?? 0), 0);
+    rows.push(['Port load now', kwText(kw)]);
     rows.push(['Feeds', `${registry.meters.length} meters`]);
   } else if (edge)
     rows.push(['Drawing now', kwText(flows?.get(edge.id)?.kw ?? 0)]);
+  if (node.kind === 'source') {
+    rows.push([
+      'Size',
+      node.kva ? `${node.kva.toLocaleString('en-US')} kVA` : 'Not chosen yet',
+    ]);
+    rows.push(['Feeds', `${edge?.meterIds.length ?? 0} meters`]);
+    rows.push(['Position', 'Placed by port staff']);
+    return { title: node.label, rows, over: flows?.get(edge?.id)?.over };
+  }
   if (node.meterId) {
     const meter = registry.meters.find((m) => m.id === node.meterId);
     if (meter && node.kind !== 'transformer' && node.kind !== 'meter')
