@@ -171,8 +171,10 @@ speeds, utilization and berth hours), truck payloads and circuity. The ocean
 and port legs use the EPA port inventory method (`ogvMethod.js`) and tug
 factors (`callEmissions.js`); trucks use 10.21 kg CO2/gal at 6.5 mpg with
 2010 certification limits as a NOx/PM floor; rail uses 470 ton-miles/gal and
-Tier 3 line-haul limits. `freightFootprint({ truckFactors })` is where the EV
-Planning fleet catalog plugs in. Liquid fertilizer, fish and offshore oil are
+Tier 3 line-haul limits by default. On the map the layer uses the EV Planning
+fleet catalog instead (`src/emissions/freightFleet.js`): its default diesel
+drayage, reefer and auto-carrier trucks with their payloads, the default
+battery-electric drayage truck for the what-if, and its line-haul rail factor. Liquid fertilizer, fish and offshore oil are
 left out (no published origins or no ocean leg).
 
 ## Port asset admin portal — November 10, 2026

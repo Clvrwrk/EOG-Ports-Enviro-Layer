@@ -66,12 +66,14 @@ export function footprintCard({
  * @param {(reason: string) => void} [options.requestRender]
  * @param {(options: object) => object} [options.compute] freightFootprint.
  * @param {object} [options.truckFactors] Replaces the default truck factors.
+ * @param {object} [options.railFactors] Replaces the default rail factors.
  */
 export function createFreightFootprintLayer({
   overlayHost = NO_OVERLAY,
   requestRender = () => {},
   compute = freightFootprint,
   truckFactors,
+  railFactors,
 } = {}) {
   let viewer = null;
   let dataSource = null;
@@ -87,7 +89,10 @@ export function createFreightFootprintLayer({
     );
 
   function model() {
-    const opts = truckFactors ? { truckFactors } : {};
+    const opts = {
+      ...(truckFactors ? { truckFactors } : {}),
+      ...(railFactors ? { railFactors } : {}),
+    };
     footprint = compute(opts);
     bevDrayage = compute({ ...opts, scenario: { drayage: 'electric' } });
   }

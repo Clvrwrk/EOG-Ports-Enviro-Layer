@@ -387,6 +387,7 @@ export const COMMODITIES = Object.freeze({
       wws: 0.2,
       'channel-islands-logistics': 0.15,
     },
+    truckKind: 'auto_carrier',
     truckPayloadT: 17.1,
     markets: {
       'la-basin': [0.35, 'truck'],
@@ -436,6 +437,7 @@ export const COMMODITIES = Object.freeze({
       'ec-guayaquil': 15.8,
     },
     dropSites: { chiquita: 0.4, 'lineage-tfl': 0.3, 'tt-ventura': 0.3 },
+    truckKind: 'reefer',
     truckPayloadT: 20,
     markets: {
       'la-basin': [0.4, 'truck'],
@@ -465,6 +467,7 @@ export const COMMODITIES = Object.freeze({
       'lineage-tfl': 0.3,
       'challenger-pl': 0.3,
     },
+    truckKind: 'reefer',
     truckPayloadT: 20,
     markets: {
       'la-basin': [0.4, 'truck'],
@@ -491,6 +494,7 @@ export const COMMODITIES = Object.freeze({
       'pe-paita': 0.258,
     },
     dropSites: { 'camarillo-airport-park': 0.5, 'oxnard-del-norte': 0.5 },
+    truckKind: 'container',
     truckPayloadT: 18,
     markets: {
       'la-basin': [0.6, 'truck'],
